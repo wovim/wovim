@@ -506,7 +506,7 @@ function M.check_cores(app, force) -- luacheck: ignore
   if true then
     return
   end
-  app = app or 'build/bin/nvim' -- luacheck: ignore
+  app = app or 'build/bin/wovim' -- luacheck: ignore
   --- @type string, string?, string[]
   local initial_path, re, exc_re
   local gdb_db_cmd =

@@ -57,7 +57,7 @@ _do_release_commit() {
   $__sed -i.bk 's/(NVIM_VERSION_PRERELEASE) "-dev"/\1 ""/' CMakeLists.txt
   if grep '(NVIM_API_PRERELEASE true)' CMakeLists.txt > /dev/null; then
     $__sed -i.bk 's/(NVIM_API_PRERELEASE) true/\1 false/' CMakeLists.txt
-    build/bin/nvim --api-info > "test/functional/fixtures/api_level_$__API_LEVEL.mpack"
+    build/bin/wovim --api-info > "test/functional/fixtures/api_level_$__API_LEVEL.mpack"
     git add "test/functional/fixtures/api_level_${__API_LEVEL}.mpack"
     make doc
     git add -u -- runtime/doc/

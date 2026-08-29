@@ -21,7 +21,7 @@ You can start hacking on Nvim in less than 5 minutes:
         cd neovim
         # (Optional) Build and run Nvim:
         make
-        VIMRUNTIME=./runtime ./build/bin/nvim --luamod-dev
+        VIMRUNTIME=./runtime ./build/bin/wovim --luamod-dev
 3. Run a single test. We will start with "example_spec.lua", which is a real
    test that shows how tests are written: >
         make functionaltest TEST_FILE=test/functional/example_spec.lua
@@ -113,12 +113,12 @@ To debug the main process, you can debug the nvim binary with the `--headless`
 flag which does not launch the TUI and will allow you to set breakpoints in code
 not related to TUI rendering like so: >
 
-    lldb -- ./build/bin/nvim --headless --listen ~/.cache/nvim/debug-server.pipe
+    lldb -- ./build/bin/wovim --headless --listen ~/.cache/nvim/debug-server.pipe
 
 While in lldb, enter `run`. You can then attach to the headless process in a
 new terminal window to interact with the editor like so: >
 
-    ./build/bin/nvim --remote-ui --server ~/.cache/nvim/debug-server.pipe
+    ./build/bin/wovim --remote-ui --server ~/.cache/nvim/debug-server.pipe
 
 Conversely for debugging TUI rendering, you can start a headless process and
 debug the remote-ui process multiple times without losing editor state.
@@ -149,7 +149,7 @@ libvterm `vterm-dump` utility formats the result for human-readability.
 Record a Nvim terminal session and format it with `vterm-dump`: >sh
 
     script foo
-    ./build/bin/nvim -u NONE
+    ./build/bin/wovim -u NONE
     # Exit the script session with CTRL-d
 
     # Use `vterm-dump` utility to format the result.
@@ -211,13 +211,13 @@ function timing: >
       delete(@pidmap[args->pid]);
     }
 
-    usdt:build/bin/nvim:neovim:eval__call_func__entry {
+    usdt:build/bin/wovim:neovim:eval__call_func__entry {
         @pidmap[pid] = 1;
         @depth++;
         @funcentry[@depth] = nsecs;
     }
 
-    usdt:build/bin/nvim:neovim:eval__call_func__return {
+    usdt:build/bin/wovim:neovim:eval__call_func__return {
         $func = str(arg0);
         $msecs = (nsecs - @funcentry[@depth]) / 1000000;
 
@@ -301,7 +301,7 @@ https://stackoverflow.com/a/18368068
 
 To get a backtrace from the `./core` dump file:
 >bash
-    gdb build/bin/nvim ./core 2>&1 | tee backtrace.txt
+    gdb build/bin/wovim ./core 2>&1 | tee backtrace.txt
     (gdb) thread apply all bt full
 <
 
@@ -395,7 +395,7 @@ Use `TEST_TAG` to run tests matching `#foo` tags (e.g.
 <
 Then, in another terminal:
 >bash
-    gdb build/bin/nvim
+    gdb build/bin/wovim
     (gdb) target remote localhost:7777
 
 -- See `nvim_argv` in https://github.com/neovim/neovim/blob/master/test/functional/testnvim.lua.
@@ -403,14 +403,14 @@ Then, in another terminal:
 USING LLDB TO STEP THROUGH UNIT TESTS
 
 >
-    lldb build/bin/nvim -- -l test/runner.lua --lpath=./build/?.lua test/unit/
+    lldb build/bin/wovim -- -l test/runner.lua --lpath=./build/?.lua test/unit/
 <
 USING GDB
 
 To attach to a running `nvim` process with a pid of 1234 (Tip: the pid of a
 running Nvim instance can be obtained by calling |getpid()|), for instance:
 >bash
-    gdb -tui -p 1234 build/bin/nvim
+    gdb -tui -p 1234 build/bin/wovim
 <
 The `gdb` interactive prompt will appear. At any time you can:
 
@@ -444,12 +444,12 @@ from multiple `gdb` clients.
 
 Open a terminal and start `gdbserver` attached to `nvim` like this:
 >bash
-    gdbserver :6666 build/bin/nvim 2> gdbserver.log
+    gdbserver :6666 build/bin/wovim 2> gdbserver.log
 <
 `gdbserver` is now listening on port 6666. You then need to attach to this
 debugging session in another terminal:
 >bash
-    gdb build/bin/nvim
+    gdb build/bin/wovim
 <
 Once you've entered `gdb`, you need to attach to the remote session:
 >
@@ -480,10 +480,10 @@ This example `local.mk` will create the debugging session when you type
         @$(MAKE) nvim
 
     dbg-start: build
-        @tmux new-window -n 'dbg-neovim' 'gdbserver :6666 ./build/bin/nvim -D'
+        @tmux new-window -n 'dbg-neovim' 'gdbserver :6666 ./build/bin/wovim -D'
 
     dbg-attach:
-        @tmux new-window -n 'dbg-cgdb' 'cgdb -x gdb_start.sh ./build/bin/nvim'
+        @tmux new-window -n 'dbg-cgdb' 'cgdb -x gdb_start.sh ./build/bin/wovim'
 
     debug: dbg-start dbg-attach
 <

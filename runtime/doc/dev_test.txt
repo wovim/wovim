@@ -130,7 +130,7 @@ DEBUGGING TESTS
   Read more about |dev-filter-test|.
 
   Then, in another terminal: >sh
-    gdb -ex 'target remote localhost:7777' build/bin/nvim
+    gdb -ex 'target remote localhost:7777' build/bin/wovim
 <
   If `$VALGRIND` is also set it will pass `--vgdb=yes` to valgrind instead of
   starting gdbserver directly.
@@ -448,7 +448,7 @@ Number; !must be defined to function properly):
   Currently only compilers with gcc-compatible arguments are supported.
 
 - `GDB` (F) (D): makes nvim instances to be run under `gdbserver`. It will be
-  accessible on `localhost:7777`: use `gdb build/bin/nvim`, type `target remote :7777` inside.
+  accessible on `localhost:7777`: use `gdb build/bin/wovim`, type `target remote :7777` inside.
 
 - `GDBSERVER_PORT` (F) (I): overrides port used for `GDB`.
 
@@ -472,7 +472,7 @@ Number; !must be defined to function properly):
 
 - `NVIM_LUA_NOTRACK` (F) (D): disable reference counting of Lua objects
 
-- `NVIM_PRG` (F) (S): path to Nvim executable (default: `build/bin/nvim`).
+- `NVIM_PRG` (F) (S): path to Nvim executable (default: `build/bin/wovim`).
 
 - `NVIM_TEST_MAIN_CDEFS` (U) (1): makes `ffi.cdef` run in main process. This
   raises a possibility of bugs due to conflicts in header definitions, despite

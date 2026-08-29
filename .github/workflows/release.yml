@@ -95,7 +95,7 @@ jobs:
         id: build
         run: |
           printf 'version<<END\n' >> $GITHUB_OUTPUT
-          ./build/bin/nvim --version | head -n 3 >> $GITHUB_OUTPUT
+          ./build/bin/wovim --version | head -n 3 >> $GITHUB_OUTPUT
           printf 'END\n' >> $GITHUB_OUTPUT
   macos:
     needs: setup

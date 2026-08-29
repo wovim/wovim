@@ -3,7 +3,7 @@ sign define GdbCurrentLine text=⇒
 
 
 let s:gdb_port = 7778
-let s:run_gdb = "gdb -q -f build/bin/nvim"
+let s:run_gdb = "gdb -q -f build/bin/wovim"
 let s:breakpoints = {}
 let s:max_breakpoint_sign_id = 0
 
@@ -313,10 +313,10 @@ function! s:Kill()
 endfunction
 
 
-command! GdbDebugNvim call s:Spawn(printf('make && gdbserver localhost:%d build/bin/nvim', s:gdb_port), s:run_gdb, printf('localhost:%d', s:gdb_port), 0)
+command! GdbDebugNvim call s:Spawn(printf('make && gdbserver localhost:%d build/bin/wovim', s:gdb_port), s:run_gdb, printf('localhost:%d', s:gdb_port), 0)
 command! -nargs=1 GdbDebugServer call s:Spawn(0, s:run_gdb, 'localhost:'.<q-args>, 0)
 command! -bang -nargs=? GdbDebugTest call s:Test(<q-bang>, <q-args>)
-command! -nargs=1 -complete=file GdbInspectCore call s:Spawn(0, printf('gdb -q -f -c %s build/bin/nvim', <q-args>), 0, 0)
+command! -nargs=1 -complete=file GdbInspectCore call s:Spawn(0, printf('gdb -q -f -c %s build/bin/wovim', <q-args>), 0, 0)
 command! GdbDebugStop call s:Kill()
 command! GdbToggleBreakpoint call s:ToggleBreak()
 command! GdbClearBreakpoints call s:ClearBreak()

@@ -21,7 +21,7 @@ local M = {}
 
 M.runtime_set = 'set runtimepath^=' .. t.paths.test_build_dir .. '/lib/nvim'
 
-M.nvim_prog = (os.getenv('NVIM_PRG') or t.paths.test_build_dir .. '/bin/nvim')
+M.nvim_prog = (os.getenv('NVIM_PRG') or t.paths.test_build_dir .. '/bin/wovim')
 -- Default settings for the test session.
 M.nvim_set = (
   'set shortmess+=IS background=light noswapfile noautoindent startofline'
@@ -1182,7 +1182,7 @@ return function()
         _G._nvim_test_id = _G._nvim_test_id .. 'x'
       end
       check_logs()
-      check_cores('build/bin/nvim')
+      check_cores('build/bin/wovim')
       if session then
         local msg = session:next_message(0)
         if msg then

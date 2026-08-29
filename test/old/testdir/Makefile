@@ -3,9 +3,9 @@
 #
 
 ifeq ($(OS),Windows_NT)
-  NVIM_PRG ?= ../../../build/bin/nvim.exe
+  NVIM_PRG ?= ../../../build/bin/wovim.exe
 else
-  NVIM_PRG ?= ../../../build/bin/nvim
+  NVIM_PRG ?= ../../../build/bin/wovim
 endif
 ROOT := ../../..
 

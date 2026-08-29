@@ -44,7 +44,7 @@ all: nvim
 CMAKE_FLAGS := -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
 # Extra CMake flags which extend the default set
 CMAKE_EXTRA_FLAGS ?=
-NVIM_PRG := $(MAKEFILE_DIR)/build/bin/nvim
+NVIM_PRG := $(MAKEFILE_DIR)/build/bin/wovim
 
 # CMAKE_INSTALL_PREFIX
 #   - May be passed directly or as part of CMAKE_EXTRA_FLAGS.

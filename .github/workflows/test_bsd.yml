@@ -39,7 +39,7 @@ jobs:
             set -e
             gmake deps
             gmake CMAKE_EXTRA_FLAGS="-DCI_BUILD=ON" nvim
-            ./build/bin/nvim --version
+            ./build/bin/wovim --version
 
   openbsd:
     name: OpenBSD
@@ -61,4 +61,4 @@ jobs:
             set -e
             gmake deps
             gmake CMAKE_EXTRA_FLAGS="-DCI_BUILD=ON" nvim
-            ./build/bin/nvim --version
+            ./build/bin/wovim --version
