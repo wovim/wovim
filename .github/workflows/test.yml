@@ -162,7 +162,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install CodeScene CLI
-        run: curl -sL https://downloads.codescene.io/enterprise/cli/install-cs-tool.sh | sh -s -y
+        run: curl -sL https://downloads.codescene.io/enterprise/cli/install-cs-tool.sh | sh -s -- -y
 
       - name: cs delta
         continue-on-error: true
