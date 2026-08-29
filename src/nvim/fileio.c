@@ -2775,8 +2775,6 @@ int vim_rename(const char *from, const char *to)
 /// Return FAIL for failure, OK for success.
 int vim_copyfile(const char *from, const char *to)
 {
-  char *errmsg = NULL;
-
 #ifdef HAVE_READLINK
   FileInfo from_info;
   if (os_fileinfo_link(from, &from_info) && S_ISLNK(from_info.stat.st_mode)) {
@@ -2805,10 +2803,6 @@ int vim_copyfile(const char *from, const char *to)
 
   os_set_acl(to, acl);
   os_free_acl(acl);
-  if (errmsg != NULL) {
-    semsg(errmsg, to);
-    return FAIL;
-  }
   return OK;
 }
 
