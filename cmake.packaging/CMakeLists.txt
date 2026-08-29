@@ -2,9 +2,9 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm64|ARM64|aarch64)$")
   set(CMAKE_SYSTEM_PROCESSOR arm64)
 endif()
 
-set(CPACK_PACKAGE_NAME "Neovim")
-set(CPACK_PACKAGE_VENDOR "neovim.io")
-set(CPACK_PACKAGE_FILE_NAME "nvim")
+set(CPACK_PACKAGE_NAME "wovim")
+set(CPACK_PACKAGE_VENDOR "wovim.io")
+set(CPACK_PACKAGE_FILE_NAME "wovim")
 set(CPACK_PACKAGE_DIRECTORY ${PROJECT_BINARY_DIR})
 
 # From the GitHub About section
@@ -28,24 +28,24 @@ set(CPACK_RESOURCE_FILE_README ${PROJECT_SOURCE_DIR}/README.md)
 
 if(WIN32)
   if(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
-    set(CPACK_PACKAGE_FILE_NAME "nvim-win-arm64")
+    set(CPACK_PACKAGE_FILE_NAME "wovim-win-arm64")
   else()
-    set(CPACK_PACKAGE_FILE_NAME "nvim-win64")
+    set(CPACK_PACKAGE_FILE_NAME "wovim-win64")
   endif()
-  
+
   set(CPACK_GENERATOR ZIP WIX)
   # WIX
   # CPACK_WIX_UPGRADE_GUID should be set, but should never change.
   # CPACK_WIX_PRODUCT_GUID should not be set (leave as default to auto-generate).
 
-  # The following guid is just a randomly generated guid that's been pasted here.
-  # It has no special meaning other than to supply it to WIX.
-  set(CPACK_WIX_UPGRADE_GUID "207A1A70-7B0C-418A-A153-CA6883E38F4D")
+  # Randomly generated for wovim, distinct from upstream Neovim's own GUID so
+  # a wovim MSI is never treated as an in-place upgrade of a real Neovim install.
+  set(CPACK_WIX_UPGRADE_GUID "2942C14C-3E3C-475A-84CA-BC4808A8FB76")
   set(CPACK_WIX_PRODUCT_ICON ${PROJECT_SOURCE_DIR}/runtime/neovim.ico)
 
   # Create start menu and desktop shortcuts
   set(CPACK_WIX_PROGRAM_MENU_FOLDER "${CPACK_PACKAGE_NAME}")
-  set(CPACK_PACKAGE_EXECUTABLES "nvim" "Neovim")
+  set(CPACK_PACKAGE_EXECUTABLES "wovim" "wovim")
   set(CPACK_WIX_INSTALL_SCOPE "perMachine")
 
   set(CPACK_WIX_UI_REF "WixUI_CustomInstallDir")
@@ -57,14 +57,14 @@ if(WIN32)
   list(APPEND CPACK_WIX_EXTENSIONS WixUtilExtension)
   list(APPEND CPACK_WIX_PATCH_FILE ${CMAKE_CURRENT_LIST_DIR}/WixPatch.xml)
 elseif(APPLE)
-  set(CPACK_PACKAGE_FILE_NAME "nvim-macos-${CMAKE_SYSTEM_PROCESSOR}")
+  set(CPACK_PACKAGE_FILE_NAME "wovim-macos-${CMAKE_SYSTEM_PROCESSOR}")
   set(CPACK_GENERATOR TGZ)
   set(CPACK_PACKAGE_ICON ${CMAKE_CURRENT_LIST_DIR}/neovim.icns)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  set(CPACK_PACKAGE_FILE_NAME "nvim-linux-${CMAKE_SYSTEM_PROCESSOR}" CACHE STRING "Base filename for cpack output (no extension)")
+  set(CPACK_PACKAGE_FILE_NAME "wovim-linux-${CMAKE_SYSTEM_PROCESSOR}" CACHE STRING "Base filename for cpack output (no extension)")
   set(CPACK_GENERATOR TGZ DEB)
-  set(CPACK_DEBIAN_PACKAGE_NAME "Neovim") # required
-  set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Neovim.io") # required
+  set(CPACK_DEBIAN_PACKAGE_NAME "wovim") # required
+  set(CPACK_DEBIAN_PACKAGE_MAINTAINER "wovim <justin@justinstimatze.com>") # required
 
   # Automatically compute required shared lib dependencies.
   # Unfortunately, you "just need to know" that this has a hidden

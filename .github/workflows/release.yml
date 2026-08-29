@@ -80,16 +80,16 @@ jobs:
         run: cpack --config build/CPackConfig.cmake -G TGZ
       - uses: actions/upload-artifact@v7
         with:
-          name: nvim-appimage-${{ matrix.arch }}
+          name: wovim-appimage-${{ matrix.arch }}
           path: |
-            build/bin/nvim-linux-${{ matrix.arch }}.appimage
-            build/bin/nvim-linux-${{ matrix.arch }}.appimage.zsync
+            build/bin/wovim-linux-${{ matrix.arch }}.appimage
+            build/bin/wovim-linux-${{ matrix.arch }}.appimage.zsync
           retention-days: 1
       - uses: actions/upload-artifact@v7
         with:
-          name: nvim-linux-${{ matrix.arch }}
+          name: wovim-linux-${{ matrix.arch }}
           path: |
-            build/nvim-linux-${{ matrix.arch }}.tar.gz
+            build/wovim-linux-${{ matrix.arch }}.tar.gz
           retention-days: 1
       - name: Export version
         id: build
@@ -139,8 +139,8 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: nvim-macos-${{ matrix.arch }}
-          path: build/nvim-macos-${{ matrix.arch }}.tar.gz
+          name: wovim-macos-${{ matrix.arch }}
+          path: build/wovim-macos-${{ matrix.arch }}.tar.gz
           retention-days: 1
 
   windows:
@@ -150,10 +150,10 @@ jobs:
         include:
           - runner: windows-2022
             arch: x86_64
-            archive_name: nvim-win64
+            archive_name: wovim-win64
           - runner: windows-11-arm
             arch: arm64
-            archive_name: nvim-win-arm64
+            archive_name: wovim-win-arm64
     runs-on: ${{ matrix.runner }}
     env:
       CMAKE_BUILD_TYPE: ${{ needs.setup.outputs.build_type }}
@@ -184,7 +184,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: nvim-win-${{ matrix.arch }}
+          name: wovim-win-${{ matrix.arch }}
           path: |
             build/${{ matrix.archive_name }}.zip
             build/${{ matrix.archive_name }}.msi
@@ -229,8 +229,8 @@ jobs:
       - name: Upload wasm artifact
         uses: actions/upload-artifact@v7
         with:
-          name: nvim-wasm-emscripten
-          path: nvim-wasm-emscripten.zip
+          name: wovim-wasm-emscripten
+          path: wovim-wasm-emscripten.zip
           retention-days: 1
 
   publish:
@@ -267,14 +267,14 @@ jobs:
 
       - if: env.TAG_NAME == 'nightly'
         run: |
-          (echo 'SUBJECT=Nvim development (prerelease) build';
+          (echo 'SUBJECT=wovim development (prerelease) build';
            echo 'PRERELEASE=--prerelease') >> $GITHUB_ENV
           gh release delete nightly --yes || true
           git push https://${GITHUB_ACTOR}:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY} :nightly || true
 
       - if: env.TAG_NAME != 'nightly'
         run: |
-          (echo 'SUBJECT=Nvim release build';
+          (echo 'SUBJECT=wovim release build';
            echo 'PRERELEASE=') >> $GITHUB_ENV
           gh release delete stable --yes || true
           git push https://${GITHUB_ACTOR}:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY} :stable || true
@@ -287,6 +287,6 @@ jobs:
         run: |
           envsubst < "$GITHUB_WORKSPACE/.github/workflows/notes.md" > "$RUNNER_TEMP/notes.md"
           if [ "$TAG_NAME" != "nightly" ]; then
-            gh release create stable $PRERELEASE --notes-file "$RUNNER_TEMP/notes.md" --title "$SUBJECT" --target $GITHUB_SHA nvim-macos-x86_64/* nvim-macos-arm64/* nvim-linux-x86_64/* nvim-linux-arm64/* nvim-appimage-x86_64/* nvim-appimage-arm64/* nvim-win-x86_64/* nvim-win-arm64/* nvim-wasm-emscripten/*
+            gh release create stable $PRERELEASE --notes-file "$RUNNER_TEMP/notes.md" --title "$SUBJECT" --target $GITHUB_SHA wovim-macos-x86_64/* wovim-macos-arm64/* wovim-linux-x86_64/* wovim-linux-arm64/* wovim-appimage-x86_64/* wovim-appimage-arm64/* wovim-win-x86_64/* wovim-win-arm64/* wovim-wasm-emscripten/*
           fi
-          gh release create $TAG_NAME $PRERELEASE --notes-file "$RUNNER_TEMP/notes.md" --title "$SUBJECT" --target $GITHUB_SHA nvim-macos-x86_64/* nvim-macos-arm64/* nvim-linux-x86_64/* nvim-linux-arm64/* nvim-appimage-x86_64/* nvim-appimage-arm64/* nvim-win-x86_64/* nvim-win-arm64/* nvim-wasm-emscripten/*
+          gh release create $TAG_NAME $PRERELEASE --notes-file "$RUNNER_TEMP/notes.md" --title "$SUBJECT" --target $GITHUB_SHA wovim-macos-x86_64/* wovim-macos-arm64/* wovim-linux-x86_64/* wovim-linux-arm64/* wovim-appimage-x86_64/* wovim-appimage-arm64/* wovim-win-x86_64/* wovim-win-arm64/* wovim-wasm-emscripten/*

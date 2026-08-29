@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=Neovim
+Name=wovim
 GenericName=Text Editor
 GenericName[ckb]=دەستکاریکەری دەق
 GenericName[de]=Texteditor
@@ -77,8 +77,8 @@ Comment[vi]=Soạn thảo tập tin văn bản
 Comment[wa]=Asspougnî des fitchîs tecses
 Comment[zh_CN]=编辑文本文件
 Comment[zh_TW]=編輯文字檔
-TryExec=nvim
-Exec=nvim %F
+TryExec=wovim
+Exec=wovim %F
 Terminal=true
 Type=Application
 Keywords=Text;editor;

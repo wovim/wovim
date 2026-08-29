@@ -54,12 +54,12 @@ zig build nvim_bin \
 ZIG_OUT="$ROOT/zig-out/bin"
 
 # Optimize the final WASM artifact with Binaryen.
-wasm-opt -Oz -o "$ZIG_OUT/nvim.wasm" "$ZIG_OUT/nvim.wasm"
+wasm-opt -Oz -o "$ZIG_OUT/wovim.wasm" "$ZIG_OUT/wovim.wasm"
 
 required=(
-  nvim.wasm
-  nvim.js
-  nvim.data
+  wovim.wasm
+  wovim.js
+  wovim.data
 )
 
 missing=()
@@ -82,12 +82,12 @@ echo "build-wasm.sh finished successfully."
 
 if [ "${BUNDLE_WASM:-0}" = "1" ]; then
   BUNDLE_DIR="$ROOT/bundle-wasm"
-  ZIP_PATH="$ROOT/nvim-wasm-emscripten.zip"
+  ZIP_PATH="$ROOT/wovim-wasm-emscripten.zip"
 
   rm -rf "$BUNDLE_DIR" "$ZIP_PATH"
   mkdir -p "$BUNDLE_DIR"
 
-  cp "$OUTDIR"/nvim.wasm "$OUTDIR"/nvim.js "$OUTDIR"/nvim.data "$BUNDLE_DIR"/
+  cp "$OUTDIR"/wovim.wasm "$OUTDIR"/wovim.js "$OUTDIR"/wovim.data "$BUNDLE_DIR"/
 
   cp "$ROOT"/src/wasm/*.py "$ROOT"/src/wasm/*.html "$ROOT"/src/wasm/*.js "$ROOT"/src/wasm/*.css "$BUNDLE_DIR"/
 

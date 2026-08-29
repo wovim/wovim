@@ -2,9 +2,9 @@
 set -e
 
 if [ "$1" = "remove" ]; then
-  update-alternatives --remove vi /usr/bin/nvim
-  update-alternatives --remove vim /usr/bin/nvim
-  update-alternatives --remove view /usr/bin/nvim
+  update-alternatives --remove vi /usr/bin/wovim
+  update-alternatives --remove vim /usr/bin/wovim
+  update-alternatives --remove view /usr/bin/wovim
 fi
 
 exit 0

@@ -4,7 +4,7 @@ ${NVIM_VERSION}
 
 ## Release notes
 
-- [Changelog](https://github.com/neovim/neovim/commit/${NVIM_COMMIT}) (fixes + features)
+- [Changelog](https://github.com/wovim/wovim/commit/${NVIM_COMMIT}) (fixes + features)
 - [News](./runtime/doc/news.txt) (`:help news` in Nvim)
 
 ## Install
@@ -13,31 +13,31 @@ ${NVIM_VERSION}
 
 #### Zip
 
-1. Download **nvim-win64.zip** (or **nvim-win-arm64.zip** for ARM)
+1. Download **wovim-win64.zip** (or **wovim-win-arm64.zip** for ARM)
 2. Extract the zip
-3. Run `nvim.exe` in your terminal
+3. Run `wovim.exe` in your terminal
 
 #### MSI
 
-1. Download **nvim-win64.msi** (or **nvim-win-arm64.msi** for ARM)
+1. Download **wovim-win64.msi** (or **wovim-win-arm64.msi** for ARM)
 2. Run the MSI
-3. Run `nvim.exe` in your terminal
+3. Run `wovim.exe` in your terminal
 
 Note: On Windows "Server" you may need to [install `vcruntime*.dll`](https://neovim.io/doc/install/#windows).
 
 ### macOS (x86_64)
 
-1. Download **nvim-macos-x86_64.tar.gz**
-2. Run `xattr -c ./nvim-macos-x86_64.tar.gz` (to avoid "unknown developer" warning)
-3. Extract: `tar xzvf nvim-macos-x86_64.tar.gz`
-4. Run `./nvim-macos-x86_64/bin/nvim`
+1. Download **wovim-macos-x86_64.tar.gz**
+2. Run `xattr -c ./wovim-macos-x86_64.tar.gz` (to avoid "unknown developer" warning)
+3. Extract: `tar xzvf wovim-macos-x86_64.tar.gz`
+4. Run `./wovim-macos-x86_64/bin/wovim`
 
 ### macOS (arm64)
 
-1. Download **nvim-macos-arm64.tar.gz**
-2. Run `xattr -c ./nvim-macos-arm64.tar.gz` (to avoid "unknown developer" warning)
-3. Extract: `tar xzvf nvim-macos-arm64.tar.gz`
-4. Run `./nvim-macos-arm64/bin/nvim`
+1. Download **wovim-macos-arm64.tar.gz**
+2. Run `xattr -c ./wovim-macos-arm64.tar.gz` (to avoid "unknown developer" warning)
+3. Extract: `tar xzvf wovim-macos-arm64.tar.gz`
+4. Run `./wovim-macos-arm64/bin/wovim`
 
 ### Linux (x86_64)
 
@@ -45,38 +45,34 @@ If your system does not have the required glibc version, try the (unsupported) [
 
 #### AppImage
 
-1. Download **nvim-linux-x86_64.appimage**
-2. Run `chmod u+x nvim-linux-x86_64.appimage && ./nvim-linux-x86_64.appimage`
+1. Download **wovim-linux-x86_64.appimage**
+2. Run `chmod u+x wovim-linux-x86_64.appimage && ./wovim-linux-x86_64.appimage`
    - If your system does not have FUSE you can [extract the appimage](https://github.com/AppImage/AppImageKit/wiki/FUSE#type-2-appimage):
      ```bash
-     ./nvim-linux-x86_64.appimage --appimage-extract
-     ./squashfs-root/usr/bin/nvim
+     ./wovim-linux-x86_64.appimage --appimage-extract
+     ./squashfs-root/usr/bin/wovim
      ```
 
 #### Tarball
 
-1. Download **nvim-linux-x86_64.tar.gz**
-2. Extract: `tar xzvf nvim-linux-x86_64.tar.gz`
-3. Run `./nvim-linux-x86_64/bin/nvim`
+1. Download **wovim-linux-x86_64.tar.gz**
+2. Extract: `tar xzvf wovim-linux-x86_64.tar.gz`
+3. Run `./wovim-linux-x86_64/bin/wovim`
 
 ### Linux (arm64)
 
 #### AppImage
 
-1. Download **nvim-linux-arm64.appimage**
-2. Run `chmod u+x nvim-linux-arm64.appimage && ./nvim-linux-arm64.appimage`
+1. Download **wovim-linux-arm64.appimage**
+2. Run `chmod u+x wovim-linux-arm64.appimage && ./wovim-linux-arm64.appimage`
    - If your system does not have FUSE you can [extract the appimage](https://github.com/AppImage/AppImageKit/wiki/FUSE#type-2-appimage):
      ```bash
-     ./nvim-linux-arm64.appimage --appimage-extract
-     ./squashfs-root/usr/bin/nvim
+     ./wovim-linux-arm64.appimage --appimage-extract
+     ./squashfs-root/usr/bin/wovim
      ```
 
 #### Tarball
 
-1. Download **nvim-linux-arm64.tar.gz**
-2. Extract: `tar xzvf nvim-linux-arm64.tar.gz`
-3. Run `./nvim-linux-arm64/bin/nvim`
-
-### Other
-
-- Install by [package manager](https://github.com/neovim/neovim/blob/master/INSTALL.md#install-from-package)
+1. Download **wovim-linux-arm64.tar.gz**
+2. Extract: `tar xzvf wovim-linux-arm64.tar.gz`
+3. Run `./wovim-linux-arm64/bin/wovim`
