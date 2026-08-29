@@ -30,7 +30,7 @@ check_core_dumps() {
     del=1
     shift
   fi
-  local app="${1:-${BUILD_DIR}/bin/nvim}"
+  local app="${1:-${BUILD_DIR}/bin/wovim}"
   local cores
   if test "${CI_OS_NAME}" = osx ; then
     cores="$(find /cores/ -type f -print)"

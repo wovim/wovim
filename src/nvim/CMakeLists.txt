@@ -805,7 +805,7 @@ if(WIN32)
     COMMAND ${CMAKE_COMMAND} -E make_directory ${PROJECT_BINARY_DIR}/windows_runtime_deps
     COMMAND ${CMAKE_COMMAND}
       -D CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
-      -D BINARY="${PROJECT_BINARY_DIR}/bin/nvim${CMAKE_EXECUTABLE_SUFFIX}"
+      -D BINARY="${PROJECT_BINARY_DIR}/bin/wovim${CMAKE_EXECUTABLE_SUFFIX}"
       -D DST=${PROJECT_BINARY_DIR}/windows_runtime_deps
       -D CI_BUILD=${CI_BUILD}
       -P ${PROJECT_SOURCE_DIR}/cmake/WindowsDllCopy.cmake)

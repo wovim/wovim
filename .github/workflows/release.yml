@@ -221,7 +221,7 @@ jobs:
           ./emsdk activate 6.0.2
           cd -
 
-      - name: Build nvim.wasm
+      - name: Build wovim.wasm
         run: .github/scripts/build_wasm.sh
         env:
           BUNDLE_WASM: "1"

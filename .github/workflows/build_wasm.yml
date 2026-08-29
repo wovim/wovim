@@ -1,4 +1,4 @@
-name: nvim.wasm build
+name: wovim.wasm build
 
 on:
   pull_request:
@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   build-wasm:
-    name: Build nvim.wasm (Emscripten + Zig)
+    name: Build wovim.wasm (Emscripten + Zig)
     runs-on: ubuntu-24.04
     timeout-minutes: 90
 
@@ -58,5 +58,5 @@ jobs:
             cd -
           fi
 
-      - name: Build nvim.wasm
+      - name: Build wovim.wasm
         run: .github/scripts/build_wasm.sh

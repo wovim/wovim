@@ -73,7 +73,7 @@ Un-installing Nvim                                      *uninstall*
 To uninstall Nvim:
 - If you downloaded a pre-built archive or built Nvim from source (e.g.
   `make install`), just delete its files, typically located in: >
-  /usr/local/bin/nvim
+  /usr/local/bin/wovim
   /usr/local/share/nvim
 <
   - To find where Nvim is installed, run these commands: >

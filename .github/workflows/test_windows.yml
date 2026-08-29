@@ -43,10 +43,10 @@ jobs:
         run: |
           $PSNativeCommandArgumentPassing = 'Legacy'
 
-          & build\bin\nvim.exe "--version"
+          & build\bin\wovim.exe "--version"
 
           # Ensure that the "win32" feature is set.
-          & build\bin\nvim -u NONE --headless -c 'exe !has(\"win32\").\"cq\"'
+          & build\bin\wovim -u NONE --headless -c 'exe !has(\"win32\").\"cq\"'
 
           python -m pip install pynvim
           # Sanity check
