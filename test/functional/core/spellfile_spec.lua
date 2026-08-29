@@ -220,4 +220,73 @@ describe("'spellsuggest' file:", function()
 
     eq({ goodword }, fn.spellsuggest('helloi', 5))
   end)
+
+  -- check_suggestions() copies the suggestion into a MAXWLEN + 1 stack buffer
+  -- and then appends the not-replaced tail of the bad word after it.  It used
+  -- to append at st_wordlen, the length of the suggestion *before* that
+  -- truncating copy.  A good word longer than MAXWLEN therefore put the
+  -- destination past the end of the buffer, and made the remaining-size
+  -- argument underflow to a huge size_t, so the append was unbounded too.
+  it('appends the bad word tail at the truncated length', function()
+    -- Capitalised, so spell_suggest_file() leaves it to captype() instead of
+    -- make_case_word(), and the full 497 bytes reach add_suggestion().
+    local goodword = 'Hello' .. (' hello'):rep(82)
+    eq(497, #goodword)
+    write_file(sugfile, 'helloi/' .. goodword .. '\n')
+
+    n.command('set spell spelllang=en')
+    n.command('set spellsuggest=file:' .. sugfile)
+
+    -- Text after the bad word, so the out-of-bounds append copies a long run of
+    -- bytes rather than a single stray NUL.
+    local tail = ' ' .. ('x'):rep(250)
+    local suggestions = fn.spellsuggest('helloi' .. tail, 5)
+    n.assert_alive()
+    eq(1, #suggestions)
+    -- The suggestion itself is not truncated, only the scratch copy used to
+    -- check whether the suggestion is misspelled.
+    eq(goodword .. tail, suggestions[1])
+  end)
+
+  it('leaves a capitalised good word shorter than MAXWLEN alone', function()
+    local goodword = 'Hello' .. (' hello'):rep(19)
+    eq(119, #goodword)
+    write_file(sugfile, 'helloi/' .. goodword .. '\n')
+
+    n.command('set spell spelllang=en')
+    n.command('set spellsuggest=file:' .. sugfile)
+
+    local tail = ' ' .. ('x'):rep(250)
+    eq({ goodword .. tail }, fn.spellsuggest('helloi' .. tail, 5))
+  end)
+end)
+
+describe("'spellsuggest' expr:", function()
+  before_each(function()
+    clear()
+  end)
+
+  -- The same check_suggestions() overflow through the other door.  An "expr:"
+  -- suggestion is arbitrary user data as well, and unlike a "file:" wordlist
+  -- entry it is not even bounded by a MAXWLEN * 2 line buffer.
+  it('appends the bad word tail at the truncated length', function()
+    -- Nearly twice MAXWLEN, and longer than a "file:" line could ever be.
+    local goodword = 'Hello' .. (' hello'):rep(165)
+    eq(995, #goodword)
+    api.nvim_set_var('goodword', goodword)
+
+    n.command('set spell spelllang=en')
+    n.exec([==[
+      func XSuggest()
+        return [[g:goodword, 0]]
+      endfunc
+      set spellsuggest=expr:XSuggest()
+    ]==])
+
+    local tail = ' ' .. ('x'):rep(250)
+    local suggestions = fn.spellsuggest('helloi' .. tail, 5)
+    n.assert_alive()
+    eq(1, #suggestions)
+    eq(goodword .. tail, suggestions[1])
+  end)
 end)

@@ -3115,8 +3115,11 @@ static void check_suggestions(suginfo_T *su, garray_T *gap)
   suggest_T *stp = &SUG(*gap, 0);
   for (int i = gap->ga_len - 1; i >= 0; i--) {
     // Need to append what follows to check for "the the".
+    // st_word may be longer than MAXWLEN (a "file:" or "expr:" suggestion is
+    // arbitrary user data), so append at the length actually written into
+    // longword[], not at st_wordlen, which is the length before truncation.
     xstrlcpy(longword, stp[i].st_word, MAXWLEN + 1);
-    int len = stp[i].st_wordlen;
+    int len = (int)strlen(longword);
     xstrlcpy(longword + len, su->su_badptr + stp[i].st_orglen, MAXWLEN + 1 - (size_t)len);
     hlf_T attr = HLF_COUNT;
     spell_check(curwin, longword, &attr, NULL, false);
