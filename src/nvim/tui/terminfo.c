@@ -548,7 +548,9 @@ size_t terminfo_fmt(char *buf_start, char *buf_end, const char *str, TPVAR param
       } else {
         l = strlen(ostr);
       }
-      push((long)l, NULL, &stack);
+      if (push((long)l, NULL, &stack)) {
+        return 0;
+      }
       break;
     case 'd':
     case 'o':
