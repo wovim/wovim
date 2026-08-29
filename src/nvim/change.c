@@ -2095,8 +2095,9 @@ int get_last_leader_offset(char *line, char **flags)
       // put string at start of string.
       copy_option_part(&list, part_buf, COM_MAX_LEN, ",");
       char *string = vim_strchr(part_buf, ':');
-      if (string == NULL) {  // If everything is fine, this cannot actually
-                             // happen.
+      if (string == NULL) {
+        // copy_option_part() truncates silently, so a part whose flags fill
+        // part_buf[] (>= COM_MAX_LEN - 1 bytes) leaves no colon in the copy.
         continue;
       }
       *string++ = NUL;          // Isolate flags from string.
@@ -2180,6 +2181,11 @@ int get_last_leader_offset(char *line, char **flags)
           continue;
         }
         char *string = vim_strchr(part_buf2, ':');
+        if (string == NULL) {
+          // copy_option_part() truncates silently, so a part whose flags fill
+          // part_buf2[] (>= COM_MAX_LEN - 1 bytes) leaves no colon in the copy.
+          continue;
+        }
         string++;
         while (ascii_iswhite(*string)) {
           string++;
