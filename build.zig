@@ -661,10 +661,10 @@ pub fn build(b: *std.Build) !void {
         });
 
         emcc.addArg("-o");
-        const nvim_js = emcc.addOutputFileArg("nvim.js");
-        nvim_exe_step.dependOn(&b.addInstallFileWithDir(nvim_js, .bin, "nvim.js").step);
-        nvim_exe_step.dependOn(&b.addInstallFileWithDir(nvim_js.dirname().path(b, "nvim.wasm"), .bin, "nvim.wasm").step);
-        nvim_exe_step.dependOn(&b.addInstallFileWithDir(nvim_js.dirname().path(b, "nvim.data"), .bin, "nvim.data").step);
+        const nvim_js = emcc.addOutputFileArg("wovim.js");
+        nvim_exe_step.dependOn(&b.addInstallFileWithDir(nvim_js, .bin, "wovim.js").step);
+        nvim_exe_step.dependOn(&b.addInstallFileWithDir(nvim_js.dirname().path(b, "wovim.wasm"), .bin, "wovim.wasm").step);
+        nvim_exe_step.dependOn(&b.addInstallFileWithDir(nvim_js.dirname().path(b, "wovim.data"), .bin, "wovim.data").step);
     } else {
         nvim_exe_step.dependOn(&nvim_exe_install.step);
     }

@@ -62,7 +62,7 @@ int uv_exepath(char *buffer, size_t *size)
   if (!buffer || !size) {
     return UV_EINVAL;
   }
-  const char *exepath = "/nvim.wasm";
+  const char *exepath = "/wovim.wasm";
   size_t len = strlen(exepath);
   if (*size <= len) {
     *size = len + 1;

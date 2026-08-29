@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Build nvim.wasm
+# Build wovim.wasm
 
 set -euo pipefail
 
