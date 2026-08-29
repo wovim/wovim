@@ -1,6 +1,6 @@
 <CPackWiXPatch>
   <!--  Fragment ID is from: <your build dir>/_CPack_Packages/win64/WIX/files.wxs -->
-  <CPackWiXFragment Id="CM_CP_bin.nvim.exe">
+  <CPackWiXFragment Id="CM_CP_bin.wovim.exe">
     <Environment
       Id='UpdatePath'
       Name='PATH'
