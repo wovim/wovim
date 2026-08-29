@@ -790,9 +790,11 @@ static int lua_array_length(lua_State *l, json_encode_t *ctx)
     return max;
 }
 
-static void json_check_encode_depth(lua_State *l, json_config_t *cfg,
-                                    int current_depth, strbuf_t *json)
+static void json_check_encode_depth(lua_State *l, json_encode_t *ctx,
+                                    int current_depth)
 {
+    json_config_t *cfg = ctx->cfg;
+
     /* Ensure there are enough slots free to traverse a table (key,
      * value) and push a string for a potential error message.
      *
@@ -807,7 +809,12 @@ static void json_check_encode_depth(lua_State *l, json_config_t *cfg,
         return;
 
     if (!cfg->encode_keep_buffer)
-        strbuf_free(json);
+        strbuf_free(ctx->json);
+
+    if (ctx->options->sort_keys) {
+        strbuf_free(&ctx->options->keybuf.buf);
+        free(ctx->options->keybuf.keys);
+    }
 
     luaL_error(l, "Cannot serialise, excessive nesting (%d)",
                current_depth);
@@ -1100,7 +1107,7 @@ static int json_append_data(lua_State *l, json_encode_t *ctx,
         break;
     case LUA_TTABLE:
         current_depth++;
-        json_check_encode_depth(l, cfg, current_depth, json);
+        json_check_encode_depth(l, ctx, current_depth);
 
         has_metatable = lua_getmetatable(l, -1);
 
@@ -1246,8 +1253,10 @@ static int json_encode(lua_State *l)
                 options.keybuf.size = 0;
                 options.keybuf.capacity = KEYBUF_DEFAULT_CAPACITY;
                 options.keybuf.keys = malloc(options.keybuf.capacity * sizeof(key_entry_t));
-                if (!options.keybuf.keys)
+                if (!options.keybuf.keys) {
+                    strbuf_free(&options.keybuf.buf);
                     return luaL_error (l, "out of memory");
+                }
             }
         }
 
