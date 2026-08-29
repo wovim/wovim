@@ -1885,10 +1885,14 @@ void get_buf_local_marks(const buf_T *buf, list_T *l)
 ///
 /// @note  Mark might not have it's fnum resolved.
 /// @param[in]  Name of named mark
-/// @param[out] Global/file mark
+/// @param[out] Global/file mark, empty mark if "name" is not 'A' to 'Z' or '0' to '9'
 xfmark_T get_raw_global_mark(char name)
 {
-  return namedfm[mark_global_index(name)];
+  const int idx = mark_global_index(name);
+  if (idx < 0) {
+    return (xfmark_T)INIT_XFMARK;
+  }
+  return namedfm[idx];
 }
 
 /// Get information about global marks ('A' to 'Z' and '0' to '9')
