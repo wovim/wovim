@@ -3,6 +3,19 @@ Copyright Neovim contributors. All rights reserved.
 Neovim is licensed under the terms of the Apache 2.0 license, except for
 parts of Neovim that were contributed under the Vim license (see below).
 
+====
+
+wovim is a fork of Neovim. Per Apache License 2.0 section 4(b), this notice
+records that files have been changed from the upstream Neovim project: see
+https://github.com/wovim/wovim for the commit history recording every change.
+Neovim's own copyright, license, and attribution notices below are unmodified
+and continue to apply to the code they cover.
+
+The wovim logo (logo.png) is a public domain barn owl photograph by USFWS
+Pacific Region: https://www.flickr.com/photos/usfwspacific/25613160093/
+
+====
+
 Neovim's license follows:
 
 ====

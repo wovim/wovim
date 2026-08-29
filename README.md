@@ -1,16 +1,17 @@
 <h1 align="center">
-  <img src="https://raw.githubusercontent.com/neovim/neovim.github.io/master/static/logos/neovim-logo-300x87.png" alt="Neovim">
+  <img src="./logo.png" alt="wovim" width="120" height="120">
 
-  <a href="https://neovim.io/doc/">Documentation</a> |
-  <a href="https://app.element.io/#/room/#neovim:matrix.org">Chat</a>
+  wovim
+
+  <a href="https://neovim.io/doc/">Documentation</a>
 </h1>
 
-[![Coverity Scan analysis](https://scan.coverity.com/projects/2227/badge.svg)](https://scan.coverity.com/projects/2227)
-[![Packages](https://repology.org/badge/tiny-repos/neovim.svg)](https://repology.org/metapackage/neovim)
-[![Debian CI](https://badges.debian.net/badges/debian/testing/neovim/version.svg)](https://buildd.debian.org/neovim)
-[![Downloads](https://img.shields.io/github/downloads/neovim/neovim/total.svg?maxAge=2592001)](https://github.com/neovim/neovim/releases/)
+<p align="center"><sub>Logo photo: <a href="https://www.flickr.com/photos/usfwspacific/25613160093/">barn owl, USFWS Pacific Region</a> (public domain)</sub></p>
 
-Neovim is a project that seeks to aggressively refactor [Vim](https://www.vim.org/) in order to:
+[![Coverity Scan analysis](https://scan.coverity.com/projects/wovim-wovim/badge.svg)](https://scan.coverity.com/projects/wovim-wovim)
+[![Downloads](https://img.shields.io/github/downloads/wovim/wovim/total.svg?maxAge=2592001)](https://github.com/wovim/wovim/releases/)
+
+wovim is a fork of [Neovim](https://neovim.io/), tracking upstream, that seeks to aggressively refactor [Vim](https://www.vim.org/) in order to:
 
 - Simplify maintenance and encourage [contributions](CONTRIBUTING.md)
 - Split the work between multiple developers
@@ -34,14 +35,6 @@ Features
 - Compatible with most Vim plugins, including Ruby and Python plugins
 
 See [`:help nvim-features`][nvim-features] for the full list, and [`:help news`][nvim-news] for noteworthy changes in the latest version!
-
-Install from package
---------------------
-
-Pre-built packages for Windows, macOS, and Linux are found on the
-[Releases](https://github.com/neovim/neovim/releases/) page.
-
-[Managed packages] are in [Homebrew], [Debian], [Ubuntu], [Fedora], [Arch Linux], [Void Linux], [Gentoo], and more!
 
 Install from source
 -------------------
@@ -103,13 +96,5 @@ Apache 2.0 license, except for contributions copied from Vim (identified by the
 [nvim-news]: https://neovim.io/doc/user/news.html
 [Roadmap]: https://neovim.io/roadmap/
 [advanced UIs]: https://github.com/neovim/neovim/wiki/Related-projects#gui
-[Managed packages]: ./INSTALL.md#install-from-package
-[Debian]: https://packages.debian.org/testing/neovim
-[Ubuntu]: https://packages.ubuntu.com/search?keywords=neovim
-[Fedora]: https://packages.fedoraproject.org/pkgs/neovim/neovim/
-[Arch Linux]: https://www.archlinux.org/packages/?q=neovim
-[Void Linux]: https://voidlinux.org/packages/?arch=x86_64&q=neovim
-[Gentoo]: https://packages.gentoo.org/packages/app-editors/neovim
-[Homebrew]: https://formulae.brew.sh/formula/neovim
 
 <!-- vim: set tw=80: -->

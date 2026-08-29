@@ -224,7 +224,7 @@ make lint  # or lintc, lintlua, lintquery, lintdoc
 
 - Recommendation is to use **[clangd]**.
   Can use the maintained config in [nvim-lspconfig/clangd].
-- Explore the source code [on the web](https://sourcegraph.com/github.com/neovim/neovim).
+- Explore the source code [on the web](https://github.com/wovim/wovim).
 
 ### Includes
 
@@ -252,7 +252,7 @@ or (2) start Nvim with `--luamod-dev` and `$VIMRUNTIME`. For example try adding
 a function to `runtime/lua/vim/_core/editor.lua`, then:
 
 ```bash
-VIMRUNTIME=./runtime ./build/bin/nvim --luamod-dev
+VIMRUNTIME=./runtime ./build/bin/wovim --luamod-dev
 ```
 
 Documentation
@@ -345,7 +345,7 @@ as context, use the `-W` argument as well.
 [549]: https://github.com/neovim/neovim/issues/549
 [1820]: https://github.com/neovim/neovim/pull/1820
 [ASan]: http://clang.llvm.org/docs/AddressSanitizer.html
-[GitHub Actions]: https://github.com/neovim/neovim/actions
+[GitHub Actions]: https://github.com/wovim/wovim/actions
 [Vim]: https://github.com/vim/vim
 [clangd]: https://clangd.llvm.org
 [Merge a Vim patch]: https://neovim.io/doc/user/dev_vimpatch.html
@@ -359,7 +359,7 @@ as context, use the `-W` argument as well.
 [git-bisect]: http://git-scm.com/book/en/v2/Git-Tools-Debugging-with-Git
 [git-feature-branch]: https://www.atlassian.com/git/tutorials/comparing-workflows
 [git-history-filtering]: https://www.atlassian.com/git/tutorials/git-log/filtering-the-commit-history
-[github-issues]: https://github.com/neovim/neovim/issues
+[github-issues]: https://github.com/wovim/wovim/issues
 [include-what-you-use-install]: https://github.com/include-what-you-use/include-what-you-use#how-to-install
 [include-what-you-use]: https://github.com/include-what-you-use/include-what-you-use#using-with-cmake
 [lua-language-server]: https://github.com/sumneko/lua-language-server/

@@ -130,8 +130,8 @@ Some can be auto-bumped by `scripts/bump_deps.lua`.
     * Requires a PR to update the [Zig package](https://github.com/allyourcodebase/libuv) first. If the script fails, run `zig fetch --save git+https://github.com/allyourcodebase/libuv.git#<refname>` manually.
 * [Luv](https://github.com/luvit/luv)
     * When bumping, also sync
-      - [our bundled meta file](https://github.com/neovim/neovim/blob/master/runtime/lua/uv/_meta.lua) with [the upstream meta file](https://github.com/luvit/luv/blob/master/docs/meta.lua);
-      - [our bundled documentation](https://github.com/neovim/neovim/blob/master/runtime/doc/luvref.txt) with [the upstream documentation](https://github.com/luvit/luv/blob/master/docs/docs.md).
+      - [our bundled meta file](https://github.com/wovim/wovim/blob/master/runtime/lua/uv/_meta.lua) with [the upstream meta file](https://github.com/luvit/luv/blob/master/docs/meta.lua);
+      - [our bundled documentation](https://github.com/wovim/wovim/blob/master/runtime/doc/luvref.txt) with [the upstream documentation](https://github.com/luvit/luv/blob/master/docs/docs.md).
 * [gettext](https://ftp.gnu.org/pub/gnu/gettext/)
 * [libiconv](https://ftp.gnu.org/pub/gnu/libiconv)
     * Requires a PR to update the [Zig package](https://github.com/allyourcodebase/libiconv) first.
@@ -183,11 +183,7 @@ Operational dependencies
 * Org/repo variables:
     * `BACKPORT_APP`
 * Domain names (held in https://namecheap.com):
-    * neovim.org
-    * neovim.io
-    * packspec.org
-    * pkgjson.org
-* The above domains are registered and managed in https://cloudflare.com
+    * wovim.io
 
 
 Refactoring
@@ -207,11 +203,6 @@ benefit. The modules are:
 
 Automation (CI)
 ---------------
-
-### Backup
-
-Discussions from issues and PRs are backed up here:
-https://github.com/neovim/neovim-backup
 
 ### Development guidelines
 
