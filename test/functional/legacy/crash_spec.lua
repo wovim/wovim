@@ -109,3 +109,27 @@ it('no crash when an overlong "comments" part comes from a modeline', function()
   eq('# foo bar', eval('getline(1)'))
   assert_alive()
 end)
+
+it('no crash from an out-of-range integer part in "cinoptions"', function()
+  command('set cinoptions=>3000000000')
+  assert_alive()
+end)
+
+it('no crash from an out-of-range integer part in "cinoptions" via a modeline', function()
+  finally(function()
+    os.remove('Xcrash_cinoptions')
+  end)
+  write_file(
+    'Xcrash_cinoptions',
+    table.concat({
+      'int main(void) {',
+      '  return 0;',
+      '}',
+      '// vim: set cindent cino=>3000000000 :',
+      '',
+    }, '\n')
+  )
+  command('set modeline modelines=5')
+  command('edit Xcrash_cinoptions')
+  assert_alive()
+end)

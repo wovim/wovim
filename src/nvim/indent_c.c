@@ -1,7 +1,7 @@
 #include <inttypes.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "nvim/ascii_defs.h"
@@ -1751,7 +1751,10 @@ void parse_cino(buf_T *buf)
   buf->b_ind_continuation = sw;
 
   // Spaces from the indent of the line with an unclosed parentheses.
-  buf->b_ind_unclosed = sw * 2;
+  // Saturate rather than overflow: 'shiftwidth' is not "secure" and can be
+  // set from a modeline, so sw * 2 can overflow int with no 'cinoptions'
+  // involved at all.
+  buf->b_ind_unclosed = trim_to_int((int64_t)sw * 2);
 
   // Spaces from the indent of the line with an unclosed parentheses, which
   // itself is also unclosed.
@@ -1824,17 +1827,25 @@ void parse_cino(buf_T *buf)
       p++;
     }
     char *digits_start = p;   // remember where the digits start
-    int64_t n = getdigits_int(&p, true, 0);
+    // A digit string that doesn't fit in an int saturates instead of being
+    // fatal: 'cinoptions' can be set from a modeline, and "n" is trimmed to an
+    // int further down in any case.
+    int64_t n = trim_to_int(getdigits(&p, false, INT_MAX));
     divider = 0;
     if (*p == '.') {        // ".5s" means a fraction.
-      fraction = atoi(++p);
+      p++;
+      fraction = 0;
+      // Build up the fraction and its divider (a power of ten) together, so
+      // that "fraction" always stays below "divider".  Once another digit
+      // would push the divider past what an int can hold, the remaining
+      // digits are only skipped over: they are far below the resolution of an
+      // indent, and multiplying on would overflow.
       while (ascii_isdigit(*p)) {
-        p++;
-        if (divider) {
-          divider *= 10;
-        } else {
-          divider = 10;
+        if (divider <= INT_MAX / 10) {
+          divider = divider == 0 ? 10 : divider * 10;
+          fraction = fraction * 10 + (*p - '0');
         }
+        p++;
       }
     }
     if (*p == 's') {        // "2s" means two times 'shiftwidth'.
