@@ -31,7 +31,7 @@ jobs:
       - if: env.have_coverity_token
         name: Download Coverity
         run: |
-          wget -q https://scan.coverity.com/download/cxx/linux64 --post-data "token=$TOKEN&project=neovim%2Fneovim" -O coverity_tool.tgz
+          wget -q https://scan.coverity.com/download/cxx/linux64 --post-data "token=$TOKEN&project=wovim%2Fwovim" -O coverity_tool.tgz
           mkdir cov-scan
           tar ax -f coverity_tool.tgz --strip-components=1 -C cov-scan
         env:
@@ -55,7 +55,7 @@ jobs:
             --form file=@cov-scan.tgz \
             --form version="$(git rev-parse HEAD)" \
             --form description="Daily GHA scan" \
-            'https://scan.coverity.com/builds?project=neovim%2Fneovim'
+            'https://scan.coverity.com/builds?project=wovim%2Fwovim'
         env:
           TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
           EMAIL: ${{ secrets.COVERITY_SCAN_EMAIL }}
