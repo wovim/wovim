@@ -134,6 +134,45 @@ jobs:
           cmake --preset ci
       - run: cmake --build build --target clang-analyzer
 
+  cppcheck:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install cppcheck
+        run: sudo apt-get install -y cppcheck
+
+      - name: cppcheck
+        continue-on-error: true
+        run: |
+          cppcheck --enable=warning,performance,portability \
+            --inline-suppr --error-exitcode=1 -j"$(nproc)" \
+            --suppress=missingIncludeSystem src/nvim
+
+  codescene:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install CodeScene CLI
+        run: curl -sL https://downloads.codescene.io/enterprise/cli/install-cs-tool.sh | sh -s -y
+
+      - name: cs delta
+        continue-on-error: true
+        run: |
+          BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            BASE="HEAD~1"
+          fi
+          "$HOME/.local/bin/cs" delta --error-on-warnings "$BASE" HEAD
+
   posix:
     name: ${{ matrix.build.os }} ${{ matrix.build.flavor }} ${{ matrix.build.cc }} ${{ matrix.test }}
     strategy:
