@@ -1425,7 +1425,7 @@ static int get_baseclass_amount(int col)
       amount = get_indent_lnum(trypos->lnum);       // XXX
     }
     if (!cin_ends_in(get_cursor_line_ptr(), ",")) {
-      amount += curbuf->b_ind_cpp_baseclass;
+      amount = trim_to_int((int64_t)amount + curbuf->b_ind_cpp_baseclass);
     }
   } else {
     curwin->w_cursor.col = col;
@@ -1991,6 +1991,10 @@ void parse_cino(buf_T *buf)
 int get_c_indent(void)
 {
   pos_T cur_curpos;
+  // 'cinoptions' and 'shiftwidth' are not "secure" and can be set from a
+  // modeline, and parse_cino() saturates instead of wrapping, so every b_ind_*
+  // read below can legitimately hold INT_MAX or INT_MIN.  Combining one with
+  // the running indent is therefore done in int64_t and trimmed back to int.
   int amount;
   int scope_amount;
   int cur_amount = MAXCOL;
@@ -2200,7 +2204,7 @@ int get_c_indent(void)
             }
           }
           if (start_off != 0) {
-            amount += start_off;
+            amount = trim_to_int((int64_t)amount + start_off);
           } else if (start_align == COM_RIGHT) {
             amount += vim_strsize(lead_start) - vim_strsize(lead_middle);
           }
@@ -2214,7 +2218,7 @@ int get_c_indent(void)
           amount = get_indent_lnum(curwin->w_cursor.lnum - 1);
           // XXX
           if (off != 0) {
-            amount += off;
+            amount = trim_to_int((int64_t)amount + off);
           } else if (align == COM_RIGHT) {
             amount += vim_strsize(lead_start) - vim_strsize(lead_middle);
           }
@@ -2256,7 +2260,7 @@ int get_c_indent(void)
         getvcol(curwin, comment_pos, &col, NULL, NULL, 0);
         amount = col;
         if (curbuf->b_ind_in_comment2 || *look == NUL) {
-          amount += curbuf->b_ind_in_comment;
+          amount = trim_to_int((int64_t)amount + curbuf->b_ind_in_comment);
         }
       }
     }
@@ -2421,7 +2425,7 @@ int get_c_indent(void)
               }
 
               our_paren_pos.col = 0;
-              amount += n * curbuf->b_ind_unclosed_wrapped;
+              amount = trim_to_int((int64_t)amount + (int64_t)n * curbuf->b_ind_unclosed_wrapped);
             } else if (curbuf->b_ind_unclosed_whiteok) {
               our_paren_pos.col++;
             } else {
@@ -2463,11 +2467,11 @@ int get_c_indent(void)
             our_paren_pos.col--;
             switch (*ml_get_pos(&our_paren_pos)) {
             case '(':
-              amount += curbuf->b_ind_unclosed2;
+              amount = trim_to_int((int64_t)amount + curbuf->b_ind_unclosed2);
               col = our_paren_pos.col;
               break;
             case ')':
-              amount -= curbuf->b_ind_unclosed2;
+              amount = trim_to_int((int64_t)amount - curbuf->b_ind_unclosed2);
               col = MAXCOL;
               break;
             }
@@ -2476,17 +2480,17 @@ int get_c_indent(void)
           // Use b_ind_unclosed once, when the first '(' is not inside
           // braces
           if (col == MAXCOL) {
-            amount += curbuf->b_ind_unclosed;
+            amount = trim_to_int((int64_t)amount + curbuf->b_ind_unclosed);
           } else {
             curwin->w_cursor.lnum = our_paren_pos.lnum;
             curwin->w_cursor.col = col;
             if (find_match_paren_after_brace(curbuf->b_ind_maxparen)) {
-              amount += curbuf->b_ind_unclosed2;
+              amount = trim_to_int((int64_t)amount + curbuf->b_ind_unclosed2);
             } else {
               if (is_if_for_while) {
-                amount += curbuf->b_ind_if_for_while;
+                amount = trim_to_int((int64_t)amount + curbuf->b_ind_if_for_while);
               } else {
-                amount += curbuf->b_ind_unclosed;
+                amount = trim_to_int((int64_t)amount + curbuf->b_ind_unclosed);
               }
             }
           }
@@ -2504,7 +2508,7 @@ int get_c_indent(void)
 
       // add extra indent for a comment
       if (cin_iscomment(theline)) {
-        amount += curbuf->b_ind_comment;
+        amount = trim_to_int((int64_t)amount + curbuf->b_ind_comment);
       }
     } else {
       // We are inside braces, there is a { before this line at the position
@@ -2568,7 +2572,7 @@ int get_c_indent(void)
       if (theline[0] == '}') {
         // they may want closing braces to line up with something
         // other than the open brace.  indulge them, if so.
-        amount += curbuf->b_ind_close_extra;
+        amount = trim_to_int((int64_t)amount + curbuf->b_ind_close_extra);
       } else {
         // If we're looking at an "else", try to find an "if"
         // to match it with.
@@ -2605,17 +2609,17 @@ int get_c_indent(void)
           lookfor_cpp_namespace = true;
         } else {
           if (start_brace == BRACE_AT_END) {    // '{' is at end of line
-            amount += curbuf->b_ind_open_imag;
+            amount = trim_to_int((int64_t)amount + curbuf->b_ind_open_imag);
 
             l = skipwhite(get_cursor_line_ptr());
             if (cin_is_cpp_namespace(l)) {
-              amount += curbuf->b_ind_cpp_namespace;
+              amount = trim_to_int((int64_t)amount + curbuf->b_ind_cpp_namespace);
             } else if (cin_is_cpp_extern_c(l)) {
-              amount += curbuf->b_ind_cpp_extern_c;
+              amount = trim_to_int((int64_t)amount + curbuf->b_ind_cpp_extern_c);
             }
           } else {
             // Compensate for adding b_ind_open_extra later.
-            amount -= curbuf->b_ind_open_extra;
+            amount = trim_to_int((int64_t)amount - curbuf->b_ind_open_extra);
             if (amount < 0) {
               amount = 0;
             }
@@ -2626,10 +2630,10 @@ int get_c_indent(void)
 
         if (cin_iscase(theline, false)) {       // it's a switch() label
           lookfor = LOOKFOR_CASE;       // find a previous switch() label
-          amount += curbuf->b_ind_case;
+          amount = trim_to_int((int64_t)amount + curbuf->b_ind_case);
         } else if (cin_isscopedecl(theline)) {  // private:, ...
           lookfor = LOOKFOR_SCOPEDECL;          // class decl is this block
-          amount += curbuf->b_ind_scopedecl;
+          amount = trim_to_int((int64_t)amount + curbuf->b_ind_scopedecl);
         } else {
           if (curbuf->b_ind_case_break && cin_isbreak(theline)) {
             // break; ...
@@ -2638,7 +2642,7 @@ int get_c_indent(void)
 
           lookfor = LOOKFOR_INITIAL;
           // b_ind_level from start of block
-          amount += curbuf->b_ind_level;
+          amount = trim_to_int((int64_t)amount + curbuf->b_ind_level);
         }
         scope_amount = amount;
         whilelevel = 0;
@@ -2668,14 +2672,14 @@ int get_c_indent(void)
             if (lookfor == LOOKFOR_ENUM_OR_INIT) {
               if (curwin->w_cursor.lnum == 0
                   || curwin->w_cursor.lnum
-                  < ourscope - curbuf->b_ind_maxparen) {
+                  < ourscope - (int64_t)curbuf->b_ind_maxparen) {
                 // nothing found (abuse curbuf->b_ind_maxparen as
                 // limit) assume terminated line (i.e. a variable
                 // initialization)
                 if (cont_amount > 0) {
                   amount = cont_amount;
                 } else if (!curbuf->b_ind_js) {
-                  amount += ind_continuation;
+                  amount = trim_to_int((int64_t)amount + ind_continuation);
                 }
                 break;
               }
@@ -2757,13 +2761,13 @@ int get_c_indent(void)
               if (cont_amount > 0) {
                 amount = cont_amount;
               } else {
-                amount += ind_continuation;
+                amount = trim_to_int((int64_t)amount + ind_continuation);
               }
             } else if (lookfor == LOOKFOR_UNTERM) {
               if (cont_amount > 0) {
                 amount = cont_amount;
               } else {
-                amount += ind_continuation;
+                amount = trim_to_int((int64_t)amount + ind_continuation);
               }
             } else {
               if (lookfor != LOOKFOR_TERM
@@ -2771,7 +2775,7 @@ int get_c_indent(void)
                   && lookfor != LOOKFOR_COMMA) {
                 amount = scope_amount;
                 if (theline[0] == '{') {
-                  amount += curbuf->b_ind_open_extra;
+                  amount = trim_to_int((int64_t)amount + curbuf->b_ind_open_extra);
                   added_to_amount = curbuf->b_ind_open_extra;
                 }
               }
@@ -2807,11 +2811,12 @@ int get_c_indent(void)
 
                 // Finally the actual check for "namespace".
                 if (cin_is_cpp_namespace(l)) {
-                  amount += curbuf->b_ind_cpp_namespace
-                            - added_to_amount;
+                  amount = trim_to_int((int64_t)amount + curbuf->b_ind_cpp_namespace
+                                       - added_to_amount);
                   break;
                 } else if (cin_is_cpp_extern_c(l)) {
-                  amount += curbuf->b_ind_cpp_extern_c - added_to_amount;
+                  amount = trim_to_int((int64_t)amount + curbuf->b_ind_cpp_extern_c
+                                       - added_to_amount);
                   break;
                 }
 
@@ -2857,7 +2862,7 @@ int get_c_indent(void)
               if (cont_amount > 0) {
                 amount = cont_amount;
               } else {
-                amount += ind_continuation;
+                amount = trim_to_int((int64_t)amount + ind_continuation);
               }
               break;
             }
@@ -2909,10 +2914,10 @@ int get_c_indent(void)
               l = after_label(get_cursor_line_ptr());
               if (l != NULL && cin_is_cinword(l)) {
                 if (theline[0] == '{') {
-                  amount += curbuf->b_ind_open_extra;
+                  amount = trim_to_int((int64_t)amount + curbuf->b_ind_open_extra);
                 } else {
-                  amount += curbuf->b_ind_level
-                            + curbuf->b_ind_no_brace;
+                  amount = trim_to_int((int64_t)amount + curbuf->b_ind_level
+                                       + curbuf->b_ind_no_brace);
                 }
               }
               break;
@@ -2924,9 +2929,10 @@ int get_c_indent(void)
             //      break;              <- may line up with this line
             //   case xx:
             // ->   y = 1;
-            scope_amount = get_indent() + (iscase            // XXX
-                                           ? curbuf->b_ind_case_code
-                                           : curbuf->b_ind_scopedecl_code);
+            scope_amount = trim_to_int((int64_t)get_indent()      // XXX
+                                       + (iscase
+                                          ? curbuf->b_ind_case_code
+                                          : curbuf->b_ind_scopedecl_code));
             lookfor = curbuf->b_ind_case_break
                       ? LOOKFOR_NOBREAK : LOOKFOR_ANY;
             continue;
@@ -2974,7 +2980,7 @@ int get_c_indent(void)
               if (cont_amount > 0) {
                 amount = cont_amount;
               } else {
-                amount += ind_continuation;
+                amount = trim_to_int((int64_t)amount + ind_continuation);
               }
             } else if (theline[0] == '{') {
               // Need to find start of the declaration.
@@ -3047,7 +3053,7 @@ int get_c_indent(void)
                                   && terminated == ',')) {
             if (lookfor != LOOKFOR_ENUM_OR_INIT
                 && (*skipwhite(l) == '[' || l[strlen(l) - 1] == '[')) {
-              amount += ind_continuation;
+              amount = trim_to_int((int64_t)amount + ind_continuation);
             }
             // If we're in the middle of a paren thing, Go back to the line
             // that starts it so we can get the right prevailing indent
@@ -3128,7 +3134,7 @@ int get_c_indent(void)
               //        { 1, 2 },
               // ->     { 3, 4 }
               if (*skipwhite(l) != '{') {
-                amount += curbuf->b_ind_open_extra;
+                amount = trim_to_int((int64_t)amount + curbuf->b_ind_open_extra);
               }
 
               if (curbuf->b_ind_cpp_baseclass && !curbuf->b_ind_js) {
@@ -3153,7 +3159,7 @@ int get_c_indent(void)
                 if (cont_amount > 0) {
                   amount = cont_amount;
                 } else {
-                  amount += ind_continuation;
+                  amount = trim_to_int((int64_t)amount + ind_continuation);
                 }
                 break;
               }
@@ -3171,11 +3177,11 @@ int get_c_indent(void)
               // ->     here;
               amount = cur_amount;
               if (theline[0] == '{') {
-                amount += curbuf->b_ind_open_extra;
+                amount = trim_to_int((int64_t)amount + curbuf->b_ind_open_extra);
               }
               if (lookfor != LOOKFOR_TERM) {
-                amount += curbuf->b_ind_level
-                          + curbuf->b_ind_no_brace;
+                amount = trim_to_int((int64_t)amount + curbuf->b_ind_level
+                                     + curbuf->b_ind_no_brace);
                 break;
               }
 
@@ -3225,7 +3231,7 @@ int get_c_indent(void)
               if (lookfor == LOOKFOR_UNTERM) {
                 // When line ends in a comma add extra indent
                 if (terminated == ',') {
-                  amount += ind_continuation;
+                  amount = trim_to_int((int64_t)amount + ind_continuation);
                 }
                 break;
               }
@@ -3332,7 +3338,7 @@ int get_c_indent(void)
               if (cont_amount > 0) {
                 amount = cont_amount;
               } else {
-                amount += ind_continuation;
+                amount = trim_to_int((int64_t)amount + ind_continuation);
               }
               break;
             }
@@ -3341,7 +3347,7 @@ int get_c_indent(void)
               lookfor = LOOKFOR_TERM;
               amount = get_indent();                // XXX
               if (theline[0] == '{') {
-                amount += curbuf->b_ind_open_extra;
+                amount = trim_to_int((int64_t)amount + curbuf->b_ind_open_extra);
               }
             }
             whilelevel++;
@@ -3384,7 +3390,7 @@ int get_c_indent(void)
               if (cont_amount > 0) {
                 amount = cont_amount;
               } else {
-                amount += ind_continuation;
+                amount = trim_to_int((int64_t)amount + ind_continuation);
               }
               break;
             }
@@ -3443,12 +3449,12 @@ term_again:
               amount = skip_label(curwin->w_cursor.lnum, &l);
 
               if (theline[0] == '{') {
-                amount += curbuf->b_ind_open_extra;
+                amount = trim_to_int((int64_t)amount + curbuf->b_ind_open_extra);
               }
               // See remark above: "Only add b_ind_open_extra.."
               l = skipwhite(l);
               if (*l == '{') {
-                amount -= curbuf->b_ind_open_extra;
+                amount = trim_to_int((int64_t)amount - curbuf->b_ind_open_extra);
               }
               lookfor = iscase ? LOOKFOR_ANY : LOOKFOR_TERM;
 
@@ -3493,11 +3499,11 @@ term_again:
 
     // add extra indent for a comment
     if (cin_iscomment(theline)) {
-      amount += curbuf->b_ind_comment;
+      amount = trim_to_int((int64_t)amount + curbuf->b_ind_comment);
     }
     // subtract extra left-shift for jump labels
     if (curbuf->b_ind_jump_label > 0 && original_line_islabel) {
-      amount -= curbuf->b_ind_jump_label;
+      amount = trim_to_int((int64_t)amount - curbuf->b_ind_jump_label);
     }
 
     goto theend;
@@ -3645,7 +3651,7 @@ term_again:
     // something = [
     //     234,  <- extra indent
     if (cin_ends_in(l, "[")) {
-      amount = get_indent() + ind_continuation;
+      amount = trim_to_int((int64_t)get_indent() + ind_continuation);
       break;
     }
 
@@ -3707,7 +3713,7 @@ term_again:
 
   // add extra indent for a comment
   if (cin_iscomment(theline)) {
-    amount += curbuf->b_ind_comment;
+    amount = trim_to_int((int64_t)amount + curbuf->b_ind_comment);
   }
 
   // add extra indent if the previous line ended in a backslash:
@@ -3722,7 +3728,7 @@ term_again:
       if (cur_amount > 0) {
         amount = cur_amount;
       } else if (cur_amount == 0) {
-        amount += ind_continuation;
+        amount = trim_to_int((int64_t)amount + ind_continuation);
       }
     }
   }
