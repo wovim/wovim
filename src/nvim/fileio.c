@@ -2624,16 +2624,19 @@ int get4c(FILE *fd)
 /// @return  -1 when encountering EOF.
 time_t get8ctime(FILE *fd)
 {
-  time_t n = 0;
+  // Accumulate in an unsigned type: time_t is signed, and shifting a byte into
+  // its sign bit would be undefined behavior.  The bytes are the big-endian
+  // two's complement representation written by time_to_bytes().
+  uint64_t n = 0;
 
   for (int i = 0; i < 8; i++) {
     const int c = getc(fd);
     if (c == EOF) {
       return -1;
     }
-    n = (n << 8) + c;
+    n = (n << 8) + (uint64_t)c;
   }
-  return n;
+  return (time_t)n;
 }
 
 /// Reads a string of length "cnt" from "fd" into allocated memory.
