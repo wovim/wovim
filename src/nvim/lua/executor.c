@@ -2208,6 +2208,7 @@ cleanup_array:
   arena_mem_free(arena_finish(&arena));
 
 cleanup:
+  api_clear_error(&err);
   if (status == FAIL) {
     ga_clear(&expand_result_array);
   }
