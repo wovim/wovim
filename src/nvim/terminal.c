@@ -1624,12 +1624,18 @@ static int term_settermprop(VTermProp prop, VTermValue *val, void *data)
     }
 
     if (frag.initial) {
+      // A prior OSC title sequence may have been cancelled mid-fragment
+      // (CAN/SUB), which leaves term->title allocated with no frag.final
+      // ever arriving to free it: free it here rather than leaking it.
+      XFREE_CLEAR(term->title);
       term->title_len = 0;
       term->title_size = MAX(frag.len, 1024);
-      term->title = xmalloc(sizeof(char *) * term->title_size);
+      term->title = xmalloc(term->title_size);
     } else if (term->title_len + frag.len > term->title_size) {
-      term->title_size *= 2;
-      term->title = xrealloc(term->title, sizeof(char *) * term->title_size);
+      do {
+        term->title_size *= 2;
+      } while (term->title_len + frag.len > term->title_size);
+      term->title = xrealloc(term->title, term->title_size);
     }
 
     memcpy(term->title + term->title_len, frag.str, frag.len);
