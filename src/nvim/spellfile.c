@@ -572,6 +572,67 @@ typedef struct {
     } \
   } while (0)
 
+/// Number of bytes that can still be read from "fd".
+///
+/// Counts and lengths in a .spl/.sug file are read straight from the file and
+/// are then used as loop bounds and as allocation sizes.  A crafted file can
+/// put values up to INT_MAX in those fields, so they are checked against the
+/// number of bytes the file actually still holds: every such item needs at
+/// least one byte of file to back it.
+///
+/// @param  fd  File to measure.
+///
+/// @return  the number of bytes left to read, or UINT64_MAX when that cannot
+///          be determined (a pipe or a file with no meaningful size); the
+///          caller then has no bound to check against and proceeds.
+static uint64_t spell_bytes_left(FILE *const fd)
+  FUNC_ATTR_NONNULL_ALL FUNC_ATTR_WARN_UNUSED_RESULT
+{
+  FileInfo file_info;
+  if (!os_fileinfo_fd(fileno(fd), &file_info)) {
+    return UINT64_MAX;
+  }
+  // A FIFO or character device reports a size of 0 from fstat(), which
+  // would otherwise fall into the "cannot be determined" case below and
+  // return UINT64_MAX -- no bound at all, exactly what this function
+  // exists to provide. Spell files are always regular files in every
+  // legitimate case, so fail closed here instead: nothing can be read
+  // from something that isn't a real file.
+  if (!S_ISREG(file_info.stat.st_mode)) {
+    return 0;
+  }
+  const uint64_t size = os_fileinfo_size(&file_info);
+  if (size == 0) {
+    return UINT64_MAX;
+  }
+  const long pos = ftell(fd);
+  if (pos < 0) {
+    // Not seekable, so there is nothing to compare a position against.
+    return UINT64_MAX;
+  }
+  return (uint64_t)pos >= size ? 0 : size - (uint64_t)pos;
+}
+
+/// Read a string of <sectionlen> bytes from a .spl file.
+///
+/// Wrapper around read_string() that first checks "len" against what is left
+/// of the file.  "len" is read straight from the file and can be anything up
+/// to INT_MAX; read_string() would allocate that much before discovering that
+/// the file is nowhere near long enough.  A file that cannot supply "len"
+/// bytes fails here instead, with the same NULL result.
+///
+/// @param  len  <sectionlen>, must not be negative.
+///
+/// @return  the string in allocated memory, or NULL when the file is too short.
+static char *read_section_string(FILE *const fd, const int len)
+  FUNC_ATTR_NONNULL_ALL FUNC_ATTR_WARN_UNUSED_RESULT
+{
+  if ((uint64_t)len > spell_bytes_left(fd)) {
+    return NULL;
+  }
+  return read_string(fd, (size_t)len);
+}
+
 /// Check that spell file starts with a magic string
 ///
 /// Does not check for version of the file.
@@ -687,7 +748,7 @@ slang_T *spell_load_file(char *fname, char *lang, slang_T *old_lp, bool silent)
     switch (n) {
     case SN_INFO:
       XFREE_CLEAR(lp->sl_info);
-      lp->sl_info = read_string(fd, (size_t)len);  // <infotext>
+      lp->sl_info = read_section_string(fd, len);  // <infotext>
       if (lp->sl_info == NULL) {
         goto endFAIL;
       }
@@ -703,7 +764,7 @@ slang_T *spell_load_file(char *fname, char *lang, slang_T *old_lp, bool silent)
 
     case SN_MIDWORD:
       XFREE_CLEAR(lp->sl_midword);
-      lp->sl_midword = read_string(fd, (size_t)len);  // <midword>
+      lp->sl_midword = read_section_string(fd, len);  // <midword>
       if (lp->sl_midword == NULL) {
         goto endFAIL;
       }
@@ -730,7 +791,7 @@ slang_T *spell_load_file(char *fname, char *lang, slang_T *old_lp, bool silent)
       break;
 
     case SN_MAP:
-      p = read_string(fd, (size_t)len);  // <mapstr>
+      p = read_section_string(fd, len);  // <mapstr>
       if (p == NULL) {
         goto endFAIL;
       }
@@ -764,7 +825,7 @@ slang_T *spell_load_file(char *fname, char *lang, slang_T *old_lp, bool silent)
 
     case SN_SYLLABLE:
       XFREE_CLEAR(lp->sl_syllable);
-      lp->sl_syllable = read_string(fd, (size_t)len);  // <syllable>
+      lp->sl_syllable = read_section_string(fd, len);  // <syllable>
       if (lp->sl_syllable == NULL) {
         goto endFAIL;
       }
@@ -779,6 +840,13 @@ slang_T *spell_load_file(char *fname, char *lang, slang_T *old_lp, bool silent)
       if (c & SNF_REQUIRED) {
         emsg(_("E770: Unsupported section in spell file"));
         goto endFAIL;
+      }
+      // <sectionlen> is the bound of the skip loop below and comes straight
+      // from the file, so it may claim up to INT_MAX bytes of contents.  A
+      // section longer than the rest of the file is truncated; say so now
+      // rather than walking to the end of the file to find out.
+      if ((uint64_t)len > spell_bytes_left(fd)) {
+        goto truncerr;
       }
       while (--len >= 0) {
         if (getc(fd) < 0) {
@@ -1686,6 +1754,14 @@ static int spell_read_tree(FILE *fd, uint8_t **bytsp, int *bytsp_len, idx_T **id
   }
   if (len <= 0) {
     return 0;
+  }
+  // <nodecount> is the number of entries in the byts/idxs arrays: it sizes
+  // both allocations below and bounds every index read_tree_node() accepts.
+  // put_node() writes at least one byte per array entry, so a count larger
+  // than what is left of the file cannot describe a real tree; without this a
+  // four-byte field asks for up to 2 GiB of "byts" plus 8 GiB of "idxs".
+  if ((uint64_t)len > spell_bytes_left(fd)) {
+    return SP_TRUNCERROR;
   }
 
   // Allocate the byte array.  Zero-initialize so that any position the
