@@ -1991,8 +1991,12 @@ void undo_time(int step, bool sec, bool file, bool absolute)
     u_oldcount = -1;
   }
 
-  int target;
-  int closest;
+  // "target" and "closest" hold a timestamp when "dosec" is set, otherwise a
+  // file-write counter or an undo sequence number.  Timestamps are time_t
+  // values, which are wider than int, so use int64_t to hold either kind
+  // without truncating.
+  int64_t target;
+  int64_t closest;
   u_header_T *uhp = NULL;
   bool dosec = sec;
   bool dofile = file;
@@ -2006,7 +2010,7 @@ void undo_time(int step, bool sec, bool file, bool absolute)
     closest = -1;
   } else {
     if (dosec) {
-      target = (int)curbuf->b_u_time_cur + step;
+      target = (int64_t)curbuf->b_u_time_cur + step;
     } else if (dofile) {
       if (step < 0) {
         // Going back to a previous write. If there were changes after
@@ -2049,7 +2053,7 @@ void undo_time(int step, bool sec, bool file, bool absolute)
       closest = -1;
     } else {
       if (dosec) {
-        closest = (int)(os_time() + 1);
+        closest = (int64_t)os_time() + 1;
       } else if (dofile) {
         closest = curbuf->b_u_save_nr_last + 2;
       } else {
@@ -2060,7 +2064,7 @@ void undo_time(int step, bool sec, bool file, bool absolute)
       }
     }
   }
-  int closest_start = closest;
+  int64_t closest_start = closest;
   int closest_seq = curbuf->b_u_seq_cur;
   int mark;
   int nomark = 0;  // shut up compiler
@@ -2093,9 +2097,9 @@ void undo_time(int step, bool sec, bool file, bool absolute)
 
     while (uhp != NULL) {
       uhp->uh_walk = mark;
-      int val = dosec ? (int)(uhp->uh_time)
-                      : dofile ? uhp->uh_save_nr
-                               : uhp->uh_seq;
+      int64_t val = dosec ? (int64_t)uhp->uh_time
+                          : dofile ? uhp->uh_save_nr
+                                   : uhp->uh_seq;
 
       if (round == 1 && !(dofile && val == 0)) {
         // Remember the header that is closest to the target.
@@ -2267,7 +2271,9 @@ target_zero:
         // Stop when going backwards in time and didn't find the exact
         // header we were looking for.
         if (uhp->uh_seq == target && above) {
-          curbuf->b_u_seq_cur = target - 1;
+          // "above" is only set once "target" holds a sequence number, so it
+          // fits in an int here.
+          curbuf->b_u_seq_cur = (int)(target - 1);
           break;
         }
 
