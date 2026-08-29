@@ -3371,7 +3371,7 @@ describe('TUI', function()
       {1:~                        }│                        |
       {3:new                       }{101:{MATCH:<.*%s} [-] }|
                                                         |
-    ]]):format(is_os('win') and '[/\\]nvim%.exe' or '/nvim'))
+    ]]):format(is_os('win') and '[/\\]wovim%.exe' or '/wovim'))
   end)
 
   -- #28667, #28668

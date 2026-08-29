@@ -148,7 +148,7 @@ describe('startup', function()
     it('failure modes', function()
       -- nvim -l <empty>
       local proc = n.spawn_wait('-l')
-      matches('nvim%.?e?x?e?: Argument missing after: "%-l"', proc.stderr)
+      matches('wovim%.?e?x?e?: Argument missing after: "%-l"', proc.stderr)
       eq(1, proc.status)
     end)
 
@@ -742,15 +742,15 @@ describe('startup', function()
 
   it('fails on --embed with -es/-Es/-l', function()
     matches(
-      'nvim[.exe]*: %-%-embed conflicts with %-es/%-Es/%-l',
+      'wovim[.exe]*: %-%-embed conflicts with %-es/%-Es/%-l',
       n.spawn_wait('--embed', '-es').stderr
     )
     matches(
-      'nvim[.exe]*: %-%-embed conflicts with %-es/%-Es/%-l',
+      'wovim[.exe]*: %-%-embed conflicts with %-es/%-Es/%-l',
       n.spawn_wait('--embed', '-Es').stderr
     )
     matches(
-      'nvim[.exe]*: %-%-embed conflicts with %-es/%-Es/%-l',
+      'wovim[.exe]*: %-%-embed conflicts with %-es/%-Es/%-l',
       n.spawn_wait('--embed', '-l', 'foo.lua').stderr
     )
   end)

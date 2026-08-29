@@ -19,7 +19,7 @@ local nvim_prog = n.nvim_prog
 local is_os = t.is_os
 local mkdir = t.mkdir
 
-local nvim_prog_basename = is_os('win') and 'nvim.exe' or 'nvim'
+local nvim_prog_basename = is_os('win') and 'wovim.exe' or 'wovim'
 
 local link_limit = is_os('win') and 64 or (is_os('mac') or is_os('bsd')) and 33 or 41
 

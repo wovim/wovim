@@ -392,27 +392,27 @@ describe('startup --listen', function()
     t.assert_nolog('Failed to start server', testlog, 100)
     t.assert_nolog('Host lookup failed', testlog, 100)
 
-    _test({ '--listen' }, nil, 'nvim.*: Argument missing after: "%-%-listen"')
-    _test({ '--listen2' }, nil, 'nvim.*: Garbage after option argument: "%-%-listen2"')
+    _test({ '--listen' }, nil, 'wovim.*: Argument missing after: "%-%-listen"')
+    _test({ '--listen2' }, nil, 'wovim.*: Garbage after option argument: "%-%-listen2"')
     _test(
       { '--listen', in_use },
       nil,
-      ('nvim.*: Failed to %%-%%-listen: [^:]+ already [^:]+: "%s"'):format(vim.pesc(in_use))
+      ('wovim.*: Failed to %%-%%-listen: [^:]+ already [^:]+: "%s"'):format(vim.pesc(in_use))
     )
-    _test({ '--listen', '/' }, nil, 'nvim.*: Failed to %-%-listen: [^:]+: "/"')
+    _test({ '--listen', '/' }, nil, 'wovim.*: Failed to %-%-listen: [^:]+: "/"')
     if not is_os('win') then
       -- Too-long path is rejected, not silently truncated. #38623
       local too_long = './Xtest-listen-' .. ('x'):rep(192)
       _test(
         { '--listen', too_long },
         nil,
-        ('nvim.*: Failed to %%-%%-listen: invalid argument: "%s"'):format(vim.pesc(too_long))
+        ('wovim.*: Failed to %%-%%-listen: invalid argument: "%s"'):format(vim.pesc(too_long))
       )
     end
     _test(
       { '--listen', 'https://example.com' },
       nil,
-      ('nvim.*: Failed to %%-%%-listen: %s: "https://example.com"'):format(
+      ('wovim.*: Failed to %%-%%-listen: %s: "https://example.com"'):format(
         is_os('mac') and 'unknown node or service' or 'service not available for socket type'
       )
     )
@@ -423,13 +423,13 @@ describe('startup --listen', function()
     _test(
       {},
       { NVIM_LISTEN_ADDRESS = in_use },
-      ('nvim.*: Failed $NVIM_LISTEN_ADDRESS: [^:]+ already [^:]+: "%s"'):format(vim.pesc(in_use))
+      ('wovim.*: Failed $NVIM_LISTEN_ADDRESS: [^:]+ already [^:]+: "%s"'):format(vim.pesc(in_use))
     )
-    _test({}, { NVIM_LISTEN_ADDRESS = '/' }, 'nvim.*: Failed $NVIM_LISTEN_ADDRESS: [^:]+: "/"')
+    _test({}, { NVIM_LISTEN_ADDRESS = '/' }, 'wovim.*: Failed $NVIM_LISTEN_ADDRESS: [^:]+: "/"')
     _test(
       {},
       { NVIM_LISTEN_ADDRESS = 'https://example.com' },
-      ('nvim.*: Failed $NVIM_LISTEN_ADDRESS: %s: "https://example.com"'):format(
+      ('wovim.*: Failed $NVIM_LISTEN_ADDRESS: %s: "https://example.com"'):format(
         is_os('mac') and 'unknown node or service' or 'service not available for socket type'
       )
     )

@@ -10,7 +10,7 @@ local not_matches = t.not_matches
 
 local root = t.paths.test_source_path
 local build_dir = t.paths.test_build_dir
-local nvim_prog = build_dir .. '/bin/nvim'
+local nvim_prog = build_dir .. '/bin/wovim'
 local runner = root .. '/test/runner.lua'
 
 ---@param path string

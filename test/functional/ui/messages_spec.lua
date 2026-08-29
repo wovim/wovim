@@ -2226,7 +2226,7 @@ describe('ui/builtin messages', function()
       {MATCH:.*}|
                         {1:────────────────────────────────────────────}                  |
                         Nvim is open source and freely distributable                  |
-                                  https://neovim.io/#chat                             |
+                                      https://wovim.io                                |
                         {1:────────────────────────────────────────────}                  |
                         type  {18::}{25:help nvim}{18:<Enter>}     if you are new!                   |
                         type  {18::}{25:checkhealth}{18:<Enter>}   to optimize Nvim                  |
@@ -2293,10 +2293,10 @@ describe('ui/ext_messages', function()
       {1:~                                    }{16:││}{26:╲╲││}{1:                                     }|
       {1:~                                    }{16:││} {26:╲} {26:│}{1:                                     }|
       {1:~                                                                               }|
-      {1:~{MATCH: +}}{26:NVIM {MATCH:%S+}}{1:{MATCH: +}}|
+      {1:~{MATCH: +}}{26:NVIM {MATCH:.+}}{1:{MATCH: +}}|
       {1:~                 ────────────────────────────────────────────                  }|
       {1:~                 }Nvim is open source and freely distributable{1:                  }|
-      {1:~                           }https://neovim.io/#chat{1:                             }|
+      {1:~                               }https://wovim.io{1:                                }|
       {1:~                 ────────────────────────────────────────────                  }|
       {1:~                 }type  {18::}{25:help nvim}{18:<Enter>}     if you are new! {1:                  }|
       {1:~                 }type  {18::}{25:checkhealth}{18:<Enter>}   to optimize Nvim{1:                  }|
@@ -2333,10 +2333,10 @@ describe('ui/ext_messages', function()
         {1:~                                    }{16:││}{26:╲╲││}{1:                                     }|
         {1:~                                    }{16:││} {26:╲} {26:│}{1:                                     }|
         {1:~                                                                               }|
-        {1:~{MATCH: +}}{26:NVIM {MATCH:%S+}}{1:{MATCH: +}}|
+        {1:~{MATCH: +}}{26:NVIM {MATCH:.+}}{1:{MATCH: +}}|
         {1:~                 ────────────────────────────────────────────                  }|
         {1:~                 }Nvim is open source and freely distributable{1:                  }|
-        {1:~                           }https://neovim.io/#chat{1:                             }|
+        {1:~                               }https://wovim.io{1:                                }|
         {1:~                 ────────────────────────────────────────────                  }|
         {1:~                 }type  {18::}{25:help nvim}{18:<Enter>}     if you are new! {1:                  }|
         {1:~                 }type  {18::}{25:checkhealth}{18:<Enter>}   to optimize Nvim{1:                  }|
@@ -2374,10 +2374,10 @@ describe('ui/ext_messages', function()
                                              {16:││}{26:╲╲││}                                     |
                                              {16:││} {26:╲} {26:│}                                     |
                                                                                         |
-        {MATCH: +}{26:NVIM {MATCH:%S+}}{MATCH: +}|
+        {MATCH: +}{26:NVIM {MATCH:.+}}{MATCH: +}|
                           {1:────────────────────────────────────────────}                  |
                           Nvim is open source and freely distributable                  |
-                                    https://neovim.io/#chat                             |
+                                        https://wovim.io                                |
                           {1:────────────────────────────────────────────}                  |
                           type  {18::}{25:help nvim}{18:<Enter>}     if you are new!                   |
                           type  {18::}{25:checkhealth}{18:<Enter>}   to optimize Nvim                  |
@@ -2508,10 +2508,10 @@ it('ui/ext_multigrid supports intro screen', function()
       {1:~                                    }{16:││}{26:╲╲││}{1:                                     }|
       {1:~                                    }{16:││} {26:╲} {26:│}{1:                                     }|
       {1:~                                                                               }|
-      {1:~{MATCH: +}}{26:NVIM {MATCH:%S+}}{1:{MATCH: +}}|
+      {1:~{MATCH: +}}{26:NVIM {MATCH:.+}}{1:{MATCH: +}}|
       {1:~                 ────────────────────────────────────────────                  }|
       {1:~                 }Nvim is open source and freely distributable{1:                  }|
-      {1:~                           }https://neovim.io/#chat{1:                             }|
+      {1:~                               }https://wovim.io{1:                                }|
       {1:~                 ────────────────────────────────────────────                  }|
       {1:~                 }type  {18::}{25:help nvim}{18:<Enter>}     if you are new! {1:                  }|
       {1:~                 }type  {18::}{25:checkhealth}{18:<Enter>}   to optimize Nvim{1:                  }|
