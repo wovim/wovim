@@ -1288,7 +1288,10 @@ bool open_line(int dir, int flags, int second_line_indent, bool *did_do_comment)
         }
 
         // Isolate the strings of the middle and end leader.
-        while (*p && p[-1] != ':') {  // find end of middle flags
+        // Only look back for the ':' when there is a byte before "p": when the
+        // matched 'comments' part is the first one and its first flag is 'm',
+        // "p" is still at b_p_com[0] here.
+        while (*p && (p == curbuf->b_p_com || p[-1] != ':')) {  // find end of middle flags
           if (*p == COM_BLANK) {
             require_blank = true;
           }
