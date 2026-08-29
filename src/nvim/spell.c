@@ -2761,7 +2761,9 @@ int nofold_len(char *fword, int flen, char *word)
   return (int)(p - word);
 }
 
-// Copy "fword" to "cword", fixing case according to "flags".
+/// Copy "fword" to "cword[MAXWLEN]", fixing case according to "flags".
+/// The result is NUL terminated and truncated to fit in MAXWLEN bytes, like
+/// onecap_copy() and allcap_copy() do.
 void make_case_word(char *fword, char *cword, int flags)
 {
   if (flags & WF_ALLCAP) {
@@ -2772,7 +2774,7 @@ void make_case_word(char *fword, char *cword, int flags)
     onecap_copy(fword, cword, true);
   } else {
     // Use goodword as-is.
-    STRCPY(cword, fword);
+    xstrlcpy(cword, fword, MAXWLEN);
   }
 }
 

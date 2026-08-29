@@ -176,3 +176,48 @@ describe('spellfile', function()
     end)
   end)
 end)
+
+describe("'spellsuggest' file:", function()
+  local sugfile = 'Xtest-functional-spellsuggest.sug'
+
+  before_each(function()
+    clear()
+  end)
+  after_each(function()
+    os.remove(sugfile)
+  end)
+
+  -- A "file:" wordlist is arbitrary user data, so its good word may be longer
+  -- than MAXWLEN (254).  make_case_word() used to strcpy() it into the MAXWLEN
+  -- stack buffer that spell_suggest_file() passes in, overflowing it.
+  it('truncates a good word longer than MAXWLEN', function()
+    -- spell_suggest_file() reads at most MAXWLEN * 2 bytes per line, so 497
+    -- bytes is about the longest good word it can hand to make_case_word().
+    -- Whole words separated by spaces, so the suggestion survives the
+    -- "is this suggestion itself misspelled?" filter and reaches spellsuggest().
+    local goodword = ('hello '):rep(83):sub(1, -2)
+    eq(497, #goodword)
+    write_file(sugfile, 'helloi/' .. goodword .. '\n')
+
+    n.command('set spell spelllang=en')
+    n.command('set spellsuggest=file:' .. sugfile)
+
+    local suggestions = fn.spellsuggest('helloi', 5)
+    n.assert_alive()
+    eq(1, #suggestions)
+    -- MAXWLEN - 1 bytes, the most that fits alongside the NUL.
+    eq(253, #suggestions[1])
+    eq(goodword:sub(1, 253), suggestions[1])
+  end)
+
+  it('leaves a good word shorter than MAXWLEN alone', function()
+    local goodword = ('hello '):rep(20):sub(1, -2)
+    eq(119, #goodword)
+    write_file(sugfile, 'helloi/' .. goodword .. '\n')
+
+    n.command('set spell spelllang=en')
+    n.command('set spellsuggest=file:' .. sugfile)
+
+    eq({ goodword }, fn.spellsuggest('helloi', 5))
+  end)
+end)
