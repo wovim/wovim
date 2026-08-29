@@ -489,9 +489,9 @@ pub fn build(b: *std.Build) !void {
 
     const nvim_exe = if (is_wasm) b.addLibrary(.{
         .linkage = .static,
-        .name = "nvim",
+        .name = "wovim",
         .root_module = nvim_mod,
-    }) else b.addExecutable(.{ .name = "nvim", .root_module = nvim_mod });
+    }) else b.addExecutable(.{ .name = "wovim", .root_module = nvim_mod });
     nvim_exe.rdynamic = true; // -E
     nvim_exe.link_gc_sections = false; // prevent linker from gc:ing exported symbols #40622
     if (emscripten_libc_path) |lp| nvim_exe.setLibCFile(lp);

@@ -303,7 +303,8 @@ add_dependencies(format formatc formatlua formatquery)
 
 install_helper(
   FILES ${CMAKE_SOURCE_DIR}/src/man/nvim.1
-  DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+  DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
+  RENAME wovim.1)
 
 add_custom_target(nvim ALL)
 add_dependencies(nvim nvim_bin nvim_runtime_deps nvim_runtime)

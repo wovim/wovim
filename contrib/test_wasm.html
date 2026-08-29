@@ -4,7 +4,7 @@
 <body style="font-family: monospace; white-space: pre-wrap">
 <h3>nvim.wasm runtime bundling</h3>
 <button id="persistBtn">Persist now</button>
-<script src="../zig-out/bin/nvim.js"></script>
+<script src="../zig-out/bin/wovim.js"></script>
 <script>
 const log = (msg) => document.body.append(msg + "\n");
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -44,7 +44,7 @@ async function waitForFile(m, path, timeoutMs = 2000, intervalMs = 50) {
 
 async function freshNvim() {
   const m = await createNvim({
-    locateFile: (p, prefix) => p.endsWith('.data') ? '/zig-out/bin/nvim.data' : prefix + p,
+    locateFile: (p, prefix) => p.endsWith('.data') ? '/zig-out/bin/wovim.data' : prefix + p,
     noInitialRun: true,
     print: t => log("[stdout] " + t),
     printErr: t => log("[stderr] " + t),

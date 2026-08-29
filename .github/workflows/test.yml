@@ -284,13 +284,13 @@ jobs:
       - run: zig fmt --check . # run first, otherwise it will descend into zig-pkg..
       - run: mkdir -p build/ # build/ is used for shared log paths, see global ENV defs
       - run: zig build $OPTS test_nlua0
-      - run: zig build $OPTS nvim_bin && ./zig-out/bin/nvim --version
+      - run: zig build $OPTS nvim_bin && ./zig-out/bin/wovim --version
       - run: zig build $OPTS unittest
       - run: zig build $OPTS functionaltest
       - run: zig build $OPTS oldtest
       # `zig build` uses a lua script for doctags in order to support cross-compiling
       # compare with the builtin generator that they match
-      - run: cd runtime; ../zig-out/bin/nvim -u NONE -i NONE -e --headless -c "helptags ++t doc" -c quit
+      - run: cd runtime; ../zig-out/bin/wovim -u NONE -i NONE -e --headless -c "helptags ++t doc" -c quit
       - run: diff -u runtime/doc/tags zig-out/runtime/doc/tags
 
   zig-build-macos-15:
@@ -310,7 +310,7 @@ jobs:
 
       - run: mkdir -p build/ # build/ is used for shared log paths, see global ENV defs
       - run: zig build $OPTS test_nlua0
-      - run: zig build $OPTS nvim_bin && ./zig-out/bin/nvim --version
+      - run: zig build $OPTS nvim_bin && ./zig-out/bin/wovim --version
       - run: zig build $OPTS functionaltest
       - run: zig build $OPTS oldtest
 
@@ -330,7 +330,7 @@ jobs:
       - run: mkdir -p build/ # build/ is used for shared log paths, see global ENV defs
       - run: zig build test_nlua0
       - run: zig build nvim_bin
-      - run: ./zig-out/bin/nvim --version
+      - run: ./zig-out/bin/wovim --version
       # TODO: support entire test suite
       - run: zig build functionaltest -- test/functional/api/buffer_spec.lua
 

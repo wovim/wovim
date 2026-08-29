@@ -335,12 +335,12 @@ self.onmessage = async (ev) => {
     state = new Int32Array(msg.sab, 0, 3); // [head, tail, closed]
     ringData = new Uint8Array(msg.sab, 12, CAP); // offset moved from 8 → 12
     safeStatus("loading wasm...");
-    importScripts("../../zig-out/bin/nvim.js");
+    importScripts("../../zig-out/bin/wovim.js");
 
     const m = await createNvim({
       locateFile: (p) =>
         p.endsWith(".data")
-          ? "../../zig-out/bin/nvim.data"
+          ? "../../zig-out/bin/wovim.data"
           : "../../zig-out/bin/" + p,
       noInitialRun: true,
       interactive: false,
