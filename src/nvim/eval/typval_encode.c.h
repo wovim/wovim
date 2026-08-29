@@ -633,8 +633,15 @@ _convert_one_value_regular_dict: {}
   }
 typval_encode_stop_converting_one_item:
   return OK;
+  // Failure escape hatch for includer-defined macros, matching the label of the
+  // same name in the encode function below. There the stack has to be freed
+  // before returning; here it is owned by the caller, which frees it when this
+  // function reports failure.
+encode_vim_to__error_ret:
+  return FAIL;
   // Prevent “unused label” warnings.
   goto typval_encode_stop_converting_one_item;
+  goto encode_vim_to__error_ret;
 }
 
 TYPVAL_ENCODE_SCOPE int TYPVAL_ENCODE_ENCODE(
