@@ -118,7 +118,10 @@ int main(int argc, char *argv[])
         fwrite(buf, 1, n, filepointers[i]);
       }
     }
-    fflush(stdout);
+    if (fflush(stdout) != 0) {
+      fprintf(stderr, "Error writing to standard output\n");
+      exit(1);
+    }
   }
   for (i = 0; i < numfiles; i++) {
     if (filepointers[i]) {
