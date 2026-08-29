@@ -305,7 +305,7 @@ static void decref(Proc *proc)
   assert(i < kv_size(loop->children));  // element found
   if (i < kv_size(loop->children) - 1) {
     memmove(&kv_A(loop->children, i), &kv_A(loop->children, i + 1),
-            sizeof(&kv_A(loop->children, i)) * (kv_size(loop->children) - (i + 1)));
+            sizeof(kv_A(loop->children, i)) * (kv_size(loop->children) - (i + 1)));
   }
   kv_size(loop->children)--;
   CREATE_EVENT(proc->events, proc_close_event, proc);
