@@ -3736,6 +3736,8 @@ term_again:
 theend:
   if (amount < 0) {
     amount = 0;
+  } else if (amount > MAX_INDENT_AMOUNT) {
+    amount = MAX_INDENT_AMOUNT;
   }
 
 laterend:

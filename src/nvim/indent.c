@@ -478,6 +478,16 @@ int indent_size_ts(char const *ptr, OptInt ts, colnr_T *vts)
 /// @return  true if the line was changed.
 bool set_indent(int size, int flags)
 {
+  // "size" ultimately comes from 'cinoptions', 'shiftwidth', 'indentexpr',
+  // or a repeat count on a shift command -- all attacker-influenced via a
+  // modeline or a mapping, and none of them clamped before reaching here.
+  // Keep it well below MAXCOL so a pathological value can't be mistaken
+  // for the "infinite column" sentinel used elsewhere, and can't drive
+  // the indent buffer allocation below to gigabyte sizes.
+  if (size > MAX_INDENT_AMOUNT) {
+    size = MAX_INDENT_AMOUNT;
+  }
+
   char *newline;
   char *oldline;
   char *s;

@@ -18,6 +18,16 @@ enum { MAXLNUM = 0x7fffffff, };  ///< Maximal (invalid) line number
 // out of memory when trying to allocate a very long line.
 enum { MAXCOL = 0x7fffffff, };   ///< Maximal column number
 
+// A computed indent (from 'cinoptions', 'shiftwidth', or similar) that
+// reaches anywhere near MAXCOL is not a real editing request -- it is
+// either UB-turned-saturation from an absurd option value or headed for
+// the same "allocate a very long line" problem noted above. Keep indent
+// arithmetic clamped well below MAXCOL so a computed amount can never be
+// mistaken for the "infinite column" sentinel elsewhere in the codebase,
+// while leaving enormous headroom above anything a real codebase's
+// indent style would ever use.
+enum { MAX_INDENT_AMOUNT = 100000, };  ///< Maximal computed indent amount
+
 enum { MINLNUM = 1, };           ///< Minimum line number
 
 enum { MINCOL = 1, };            ///< Minimum column number
