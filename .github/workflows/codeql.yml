@@ -11,6 +11,10 @@ on:
     # The branches below must be a subset of the branches above
     branches: [ "master" ]
   workflow_dispatch:
+  schedule:
+    # Rescan on a cadence too, not only on push/PR -- catches new findings
+    # from CodeQL query-suite updates surfacing on code that hasn't changed.
+    - cron: '0 6 * * 1'
 
 permissions: {}
 
