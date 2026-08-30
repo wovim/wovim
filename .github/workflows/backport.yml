@@ -29,6 +29,11 @@ jobs:
         with:
           app-id: ${{ vars.BACKPORT_APP }}
           private-key: ${{ secrets.BACKPORT_KEY }}
+          # Scope the generated token to exactly what this job's own
+          # `permissions:` block above declares, rather than letting it
+          # inherit whatever broader access the App is installed with.
+          permission-contents: write
+          permission-pull-requests: write
 
       - name: Create backport PR
         id: backport
