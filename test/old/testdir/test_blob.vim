@@ -812,6 +812,11 @@ func Test_blob_repeat()
   call assert_equal(0z, repeat(0z1234, 0))
   call assert_equal(0z1234, repeat(0z1234, 1))
   call assert_equal(0z12341234, repeat(0z1234, 2))
+
+  " Overflow: the result would exceed what an "int"-sized blob can hold --
+  " must return empty rather than wrap the size computation and write past a
+  " too-small allocation.
+  call assert_equal(0z, repeat(0z1234, 2000000000))
 endfunc
 
 " Test for blob allocation failure

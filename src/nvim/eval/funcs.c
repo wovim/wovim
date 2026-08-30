@@ -5162,7 +5162,20 @@ static void repeat_blob(typval_T *blob_tv, varnumber_T n, typval_T *rettv)
   }
 
   const int slen = blob->bv_ga.ga_len;
-  const int len = (int)(slen * n);
+  if (slen == 0) {
+    return;
+  }
+  // Detect overflow the same way repeat_string() above does, but against
+  // INT_MAX rather than SIZE_MAX: ga_len and every tv_blob_get()/tv_blob_set()
+  // index into this blob are "int".  Computing slen * n directly and casting
+  // to int let a large "n" wrap the product, undersizing the ga_grow() below
+  // while the write loop further down still ran the full, untruncated "n"
+  // through the unchecked tv_blob_set() -- a heap write past the end of a
+  // too-small allocation, reachable from plain script via repeat(blob, n).
+  if (n > (varnumber_T)(INT_MAX / slen)) {
+    return;
+  }
+  const int len = slen * (int)n;
   if (len <= 0) {
     return;
   }
