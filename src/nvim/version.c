@@ -45,7 +45,7 @@
   "." STR(NVIM_VERSION_MINOR) "." STR(NVIM_VERSION_PATCH) \
   NVIM_VERSION_PRERELEASE
 #endif
-#define NVIM_VERSION_LONG "NVIM " NVIM_VERSION_MEDIUM " (wovim fork, https://wovim.io)"  // NOLINT(bugprone-suspicious-missing-comma)
+#define NVIM_VERSION_LONG "wovim " NVIM_VERSION_MEDIUM " (Neovim fork, https://wovim.io)"  // NOLINT(bugprone-suspicious-missing-comma)
 
 char *Versions[] = { "8.1", "8.2", "9.0", "9.1", "9.2" };
 char *longVersion = NVIM_VERSION_LONG;
@@ -4181,9 +4181,10 @@ static void do_intro_line(int row, char *mesg, bool colon, bool is_logo)
   }
 
   // Try highlighting full line:
-  // - Version starts with "NVIM".
+  // - Version starts with "wovim" (NVIM_VERSION_LONG).
   // - Separator line consists from ─ (UTF-8: E2 94 80).
-  bool is_version = mesg[0] == 'N' && mesg[1] == 'V' && mesg[2] == 'I' && mesg[3] == 'M';
+  bool is_version = mesg[0] == 'w' && mesg[1] == 'o' && mesg[2] == 'v' && mesg[3] == 'i'
+                     && mesg[4] == 'm';
   bool is_sep = utfc_ptr2len(mesg) == 3 && utf_ptr2char(mesg) == 0x2500;
   if (is_version || is_sep) {
     int clen = is_sep ? 3 : 1;
