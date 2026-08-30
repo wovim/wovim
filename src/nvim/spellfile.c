@@ -800,6 +800,14 @@ slang_T *spell_load_file(char *fname, char *lang, slang_T *old_lp, bool silent)
       break;
 
     case SN_WORDS:
+      // <sectionlen> is untrusted file data and comes straight into
+      // read_words_section() as its work bound.  A section longer than the
+      // rest of the file is truncated, so say so now rather than reading to
+      // the end of the file to find out.
+      if ((uint64_t)len > spell_bytes_left(fd)) {
+        res = SP_TRUNCERROR;
+        break;
+      }
       res = read_words_section(fd, lp, len);
       break;
 
