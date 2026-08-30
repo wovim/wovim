@@ -1579,15 +1579,23 @@ b = "as"]],
 
         insert(test.text)
 
-        test.expected_screen()
+        -- Applying tokens can yield across event-loop ticks (tokens_to_ranges'
+        -- vim.schedule-based yield when a chunk takes longer than its 5ms budget --
+        -- see semantic_tokens.lua), so a single screen:expect() cycle can run out its
+        -- whole (CI-scaled) timeout without ever seeing the resumed coroutine finish
+        -- under a slow/instrumented build. Retry the whole check for a second full
+        -- window rather than treat one narrowly-missed cycle as a real failure.
+        t.retry(nil, 25000, function()
+          test.expected_screen()
 
-        eq(
-          test.expected,
-          exec_lua(function()
-            local bufnr = vim.api.nvim_get_current_buf()
-            return vim.lsp.semantic_tokens.__STHighlighter.active[bufnr].client_state[client_id].current_result.highlights
-          end)
-        )
+          eq(
+            test.expected,
+            exec_lua(function()
+              local bufnr = vim.api.nvim_get_current_buf()
+              return vim.lsp.semantic_tokens.__STHighlighter.active[bufnr].client_state[client_id].current_result.highlights
+            end)
+          )
+        end)
       end)
     end
   end)
