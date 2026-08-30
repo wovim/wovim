@@ -520,6 +520,17 @@ function STHighlighter:process_response(response, client, request_id, version, i
     return
   end
 
+  -- ignore responses for a buffer version older than what's already applied. This can
+  -- still happen for a *cancelled* request: cancel_request() only sends $/cancelRequest
+  -- to the server and clears active_request.request_id -- it does not suppress the
+  -- original callback, so a stale response can arrive and pass the check above once a
+  -- newer request has already completed and reset active_request.request_id to nil.
+  -- Without this, that stale response would reset current_result to its own (older,
+  -- possibly empty) token set and clobber the highlights the newer response just applied.
+  if state.current_result.version and version < state.current_result.version then
+    return
+  end
+
   if not api.nvim_buf_is_valid(self.bufnr) then
     return
   end
