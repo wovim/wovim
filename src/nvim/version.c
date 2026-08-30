@@ -4066,9 +4066,9 @@ bool may_show_intro(void)
 void intro_message(bool colon)
 {
   static char *(lines[]) = {
-    "╲   ╱   ╱",
-    " ╲ ╱ ╲ ╱ ",
-    "  ╲   ╲  ",
+    "╲    ╱╲    ╱",
+    " ╲  ╱  ╲  ╱ ",
+    "  ╲╱    ╲╱  ",
     "",
     N_(NVIM_VERSION_LONG),
     "────────────────────────────────────────────",
