@@ -224,9 +224,13 @@ jobs:
         name: Set up interpreter packages
         run: |
           echo "Install neovim RubyGem."
-          gem install --no-document --bindir "$BIN_DIR" --user-install --pre neovim
+          # Pinned rather than --pre + latest: trades testing against
+          # whatever the newest (possibly prerelease) client happens to be
+          # for a reproducible install not exposed to a compromised or
+          # yanked release landing mid-run.
+          gem install --no-document --bindir "$BIN_DIR" --user-install neovim -v 0.10.0
 
-          sudo cpanm -n Neovim::Ext || cat "$HOME/.cpanm/build.log"
+          sudo cpanm -n Neovim::Ext@0.06 || cat "$HOME/.cpanm/build.log"
           perl -W -e 'use Neovim::Ext; print $Neovim::Ext::VERSION'
 
       - name: Remove .git directory
