@@ -57,6 +57,16 @@ void ui_refresh(void)
     end)
   end
 
+  -- After an edit, treesitter reparses async: a slice that doesn't finish within
+  -- languagetree.lua's default_parse_timeout_ns budget defers the rest to a later
+  -- main-loop tick, which a single poke_eventloop() doesn't wait for. Retry the
+  -- assertion instead of asserting once right after one poke.
+  local function eq_fold_levels(expected)
+    t.retry(nil, 2000, function()
+      eq(expected, get_fold_levels())
+    end)
+  end
+
   it('can compute fold levels', function()
     insert(test_text)
 
@@ -93,7 +103,7 @@ void ui_refresh(void)
     command('1,2d')
     poke_eventloop()
 
-    eq({
+    eq_fold_levels({
       [1] = '0',
       [2] = '0',
       [3] = '>1',
@@ -111,12 +121,12 @@ void ui_refresh(void)
       [15] = '2',
       [16] = '1',
       [17] = '0',
-    }, get_fold_levels())
+    })
 
     command('1put!')
     poke_eventloop()
 
-    eq({
+    eq_fold_levels({
       [1] = '>1',
       [2] = '1',
       [3] = '1',
@@ -136,7 +146,7 @@ void ui_refresh(void)
       [17] = '3',
       [18] = '2',
       [19] = '1',
-    }, get_fold_levels())
+    })
   end)
 
   it('handles changes close to start/end of folds', function()
@@ -159,83 +169,83 @@ t2]])
     feed('2ggo<Esc>')
     poke_eventloop()
 
-    eq({
+    eq_fold_levels({
       [1] = '>1',
       [2] = '1',
       [3] = '1',
       [4] = '>1',
       [5] = '1',
-    }, get_fold_levels())
+    })
 
     feed('dd')
     poke_eventloop()
 
-    eq({
+    eq_fold_levels({
       [1] = '>1',
       [2] = '1',
       [3] = '>1',
       [4] = '1',
-    }, get_fold_levels())
+    })
 
     feed('2ggdd')
     poke_eventloop()
 
-    eq({
+    eq_fold_levels({
       [1] = '0',
       [2] = '>1',
       [3] = '1',
-    }, get_fold_levels())
+    })
 
     feed('u')
     poke_eventloop()
 
-    eq({
+    eq_fold_levels({
       [1] = '>1',
       [2] = '1',
       [3] = '>1',
       [4] = '1',
-    }, get_fold_levels())
+    })
 
     feed('3ggdd')
     poke_eventloop()
 
-    eq({
+    eq_fold_levels({
       [1] = '>1',
       [2] = '1',
       [3] = '1',
-    }, get_fold_levels())
+    })
 
     feed('u')
     poke_eventloop()
 
-    eq({
+    eq_fold_levels({
       [1] = '>1',
       [2] = '1',
       [3] = '>1',
       [4] = '1',
-    }, get_fold_levels())
+    })
 
     feed('3ggI#<Esc>')
     parse()
     poke_eventloop()
 
-    eq({
+    eq_fold_levels({
       [1] = '>1',
       [2] = '1',
       [3] = '>2',
       [4] = '2',
-    }, get_fold_levels())
+    })
 
     feed('x')
     parse()
     poke_eventloop()
 
-    eq({
+    eq_fold_levels({
       [1] = '>1',
       [2] = '1',
       [3] = '>1',
       [4] = '1',
-    }, get_fold_levels())
+    })
   end)
 
   it('handles changes that trigger multiple on_bytes', function()
@@ -266,21 +276,21 @@ end
     command('1,4join')
     poke_eventloop()
 
-    eq({
+    eq_fold_levels({
       [1] = '0',
       [2] = '0',
-    }, get_fold_levels())
+    })
 
     feed('u')
     poke_eventloop()
 
-    eq({
+    eq_fold_levels({
       [1] = '>1',
       [2] = '1',
       [3] = '1',
       [4] = '1',
       [5] = '0',
-    }, get_fold_levels())
+    })
   end)
 
   it('handles multiple folds that overlap at the end and start', function()
@@ -319,7 +329,7 @@ end]])
     feed('u')
     poke_eventloop()
 
-    eq({
+    eq_fold_levels({
       [1] = '>1',
       [2] = '>2',
       [3] = '>3',
@@ -328,7 +338,7 @@ end]])
       [6] = '3',
       [7] = '2',
       [8] = '1',
-    }, get_fold_levels())
+    })
   end)
 
   it('handles multiple folds that start at the same line', function()
@@ -363,16 +373,16 @@ end]])
     command('2,6join')
     poke_eventloop()
 
-    eq({
+    eq_fold_levels({
       [1] = '>1',
       [2] = '1',
       [3] = '1',
-    }, get_fold_levels())
+    })
 
     feed('u')
     poke_eventloop()
 
-    eq({
+    eq_fold_levels({
       [1] = '>1',
       [2] = '>3',
       [3] = '3',
@@ -380,7 +390,7 @@ end]])
       [5] = '2',
       [6] = '2',
       [7] = '1',
-    }, get_fold_levels())
+    })
   end)
 
   it('takes account of relevant options', function()
