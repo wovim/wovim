@@ -2387,7 +2387,7 @@ static bool u_legacy_step(buf_T *buf, bool undo, bool do_buf_event)
   if (undo) {
     if (entering && !buf->b_u_legacy_crossed) {
       if (!shortmess(kShmUndo)) {
-        msg(_("(now in undo history from an older format)"), 0);
+        msg(_("Now in undo history from an older format"), 0);
       }
       buf->b_u_legacy_crossed = true;
     }

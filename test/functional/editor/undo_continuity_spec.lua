@@ -225,7 +225,7 @@ describe('undo continuity across undofile formats', function()
     expect('four')
   end)
 
-  it('redoes back out of the older history into this session\'s', function()
+  it("redoes back out of the older history into this session's", function()
     build_legacy_history()
     open_with_legacy()
 
