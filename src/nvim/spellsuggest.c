@@ -856,7 +856,12 @@ static void spell_suggest_file(suginfo_T *su, char *fname)
     *p++ = NUL;
     if (STRICMP(su->su_badword, line) == 0) {
       // Match!  Isolate the good word, until CR or NL.
-      for (len = 0; (uint8_t)p[len] >= ' '; len++) {}
+      // "p" is already kept inside "line" by vim_fgets()'s NUL-termination
+      // guarantee, but bound the scan explicitly against line's actual end
+      // too, so this loop and the p[len] = NUL below are provably in bounds
+      // on their own, without relying on that invariant from three
+      // functions away.
+      for (len = 0; p + len < line + MAXWLEN * 2 - 1 && (uint8_t)p[len] >= ' '; len++) {}
       p[len] = NUL;
 
       // If the suggestion doesn't have specific case duplicate the case
