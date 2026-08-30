@@ -270,6 +270,31 @@ message about that when opening a file.
 Location of the undo files is controlled by the 'undodir' option, by default
 they are saved to the dedicated directory in the application data folder.
 
+							*undo-continuity*
+The undo file format has changed over time.  An undo file written in an older
+format is never deleted or overwritten to make room for a new one.  Instead it
+is left exactly where it is, and its history stays reachable: when "u" or "g-"
+runs off the bottom of the history built up in the current session, the walk
+continues into the older file, read lazily at that moment and never written
+to.  The first time a walk crosses that boundary a single message says so;
+after that it is silent.  CTRL-R walks back out again the same way.
+
+Because the older file keeps the name it already has, this editor writes its
+own history for that buffer to a sibling file with a version-tagged suffix
+instead, for example ".un3~" beside a ".un~" it will not touch.  The sibling is
+found again automatically the next time the file is opened, and it is preferred
+over the older file when both are present in the same 'undodir' entry.  This
+means the same file can be edited with both Vim and this editor without either
+one destroying the other's history.
+
+A file whose version is not recognized at all is left alone for the same
+reason, rather than being treated as damaged and replaced.  Reading such a file
+still fails with |E824|; only the destructive half of the old behavior is gone.
+
+Use |:rundo| to adopt an older file outright instead of walking into it
+lazily.  Naming a file explicitly loads it into the undo tree as ordinary
+history, after which it is written in the current format like any other.
+
 You can also save and restore undo histories by using ":wundo" and ":rundo"
 respectively:
 							*:wu* *:wundo*

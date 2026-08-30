@@ -6789,6 +6789,13 @@ static void ex_wundo(exarg_T *eap)
   u_write_undo(eap->arg, eap->forceit, curbuf, hash);
 }
 
+/// ":rundo".
+///
+/// Naming a file explicitly is also how an undofile written in an older format
+/// gets adopted outright: u_read_undo() loads it straight into the live tree
+/// rather than stashing it for lazy reading, the way it would for a file merely
+/// found at the buffer's own undo path. Asking for a file by name is asking to
+/// take it on, so no separate promotion command is needed.
 static void ex_rundo(exarg_T *eap)
 {
   uint8_t hash[UNDO_HASH_SIZE];

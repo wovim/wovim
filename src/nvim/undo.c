@@ -141,7 +141,19 @@ typedef struct {
   buf_T *bi_buf;
   FILE *bi_fp;
   off_T bi_fsize;  ///< Size of `bi_fp` when reading, 0 if unknown.
+  int bi_version;  ///< Undofile format version being read or written.
 } bufinfo_T;
+
+/// Result of parsing an undofile's header table: the headers themselves, plus
+/// the three positions the file names by sequence number, resolved to pointers.
+/// Deliberately installs nothing — see u_read_uhp_table().
+typedef struct {
+  u_header_T **up_table;  ///< All parsed headers, sorted by uh_seq.
+  int up_num_head;        ///< Number of entries in up_table.
+  u_header_T *up_old;     ///< Oldest header, or NULL.
+  u_header_T *up_new;     ///< Newest header, or NULL.
+  u_header_T *up_cur;     ///< Current header, or NULL.
+} uhp_parse_T;
 
 #include "undo.c.generated.h"
 
@@ -498,6 +510,13 @@ int u_savecommon(buf_T *buf, linenr_T top, linenr_T bot, linenr_T newbot, bool r
       buf->b_u_oldhead = uhp;
     }
     buf->b_u_numhead++;
+
+    // A new change ends any visit to an older-format undofile: from here on
+    // "u" belongs to this change, not to legacy history.  Only the "currently
+    // inside" flag is cleared -- b_u_legacy_curhead keeps the position, so
+    // undoing back down to this point later resumes the legacy walk where it
+    // left off instead of re-applying its newest header.
+    buf->b_u_legacy_active = false;
   } else {
     if (get_undolevel(buf) < 0) {  // no undo at all
       return OK;
@@ -638,6 +657,19 @@ int u_savecommon(buf_T *buf, linenr_T top, linenr_T bot, linenr_T newbot, bool r
 // 2-byte undofile version number
 #define UF_VERSION             3
 
+// The one older format this fork can still read.  Version 2 is Vim's original
+// layout, inherited at the fork and written by every Neovim before extmark undo
+// info was added (UF_VERSION 2 -> 3).  A version-2 file differs from a version-3
+// one only by the extmark trailer each header carries; see unserialize_uhp().
+#define UF_VERSION_LEGACY      2
+
+// Suffix for the undofile wovim writes when the canonical path is occupied by a
+// file in a format wovim does not write.  Derived from UF_VERSION so a future
+// bump renames the sibling automatically; ".un3~" today.  Never a name a real
+// Vim or an unpatched wovim would produce, since those only write the bare form.
+#define UF_BARE_SUFFIX         ".un~"
+#define UF_SIBLING_SUFFIX      ".un" STR(UF_VERSION) "~"
+
 // extra fields for header
 #define UF_LAST_SAVE_NR        1
 
@@ -662,6 +694,28 @@ void u_compute_hash(buf_T *buf, uint8_t *hash)
   sha256_finish(&ctx, hash);
 }
 
+/// Builds the "same directory as the file" undofile name: "dir/name" becomes
+/// "dir/.name.un~", or "dir/.name.un3~" for the sibling form.
+///
+/// @return [allocated] The name.
+static char *u_same_dir_undo_name(const char *const ffname, const size_t ffname_len,
+                                  const bool sibling)
+  FUNC_ATTR_NONNULL_ALL FUNC_ATTR_WARN_UNUSED_RESULT
+{
+  const char *const suffix = sibling ? UF_SIBLING_SUFFIX : UF_BARE_SUFFIX;
+  const size_t suffix_len = strlen(suffix);
+
+  // ffname + the inserted '.' + the suffix + NUL.
+  char *const name = xmalloc(ffname_len + 1 + suffix_len + 1);
+  memmove(name, ffname, ffname_len + 1);
+  char *const tail = path_tail(name);
+  const size_t tail_len = ffname_len - (size_t)(tail - name);
+  memmove(tail + 1, tail, tail_len + 1);
+  *tail = '.';
+  memmove(tail + tail_len + 1, suffix, suffix_len + 1);
+  return name;
+}
+
 /// Return an allocated string of the full path of the target undofile.
 ///
 /// @param[in]  buf_ffname  Full file name for which undo file location should
@@ -671,9 +725,13 @@ void u_compute_hash(buf_T *buf, uint8_t *hash)
 ///                      existing directory. If none of the directories in
 ///                      &undodir option exist then last directory in the list
 ///                      will be automatically created.
+/// @param[in]  sibling  If true, name wovim's own versioned sibling file rather
+///                      than the canonical bare name.  Ignored when "reading":
+///                      a read considers both names, preferring the sibling
+///                      within each 'undodir' entry (see below).
 ///
 /// @return [allocated] File name to read from/write to or NULL.
-char *u_get_undo_file_name(const char *const buf_ffname, const bool reading)
+char *u_get_undo_file_name(const char *const buf_ffname, const bool reading, const bool sibling)
   FUNC_ATTR_WARN_UNUSED_RESULT
 {
   const char *ffname = buf_ffname;
@@ -701,16 +759,14 @@ char *u_get_undo_file_name(const char *const buf_ffname, const bool reading)
   char *dirp = p_udir;
   while (*dirp != NUL) {
     size_t dir_len = copy_option_part(&dirp, dir_name, MAXPATHL, ",");
+    // Both candidate names for this directory.  Only one of them is kept.
+    char *bare_name = NULL;
+    char *sibling_name = NULL;
     if (dir_len == 1 && dir_name[0] == '.') {
       // Use same directory as the ffname,
       // "dir/name" -> "dir/.name.un~"
-      undo_file_name = xmalloc(ffname_len + 6);
-      memmove(undo_file_name, ffname, ffname_len + 1);
-      char *const tail = path_tail(undo_file_name);
-      const size_t tail_len = ffname_len - (size_t)(tail - undo_file_name);
-      memmove(tail + 1, tail, tail_len + 1);
-      *tail = '.';
-      memmove(tail + tail_len + 1, ".un~", sizeof(".un~"));
+      bare_name = u_same_dir_undo_name(ffname, ffname_len, false);
+      sibling_name = u_same_dir_undo_name(ffname, ffname_len, true);
     } else {
       dir_name[dir_len] = NUL;
 
@@ -741,17 +797,37 @@ char *u_get_undo_file_name(const char *const buf_ffname, const bool reading)
             }
           }
         }
-        undo_file_name = concat_fnames(cbuf_as_string(dir_name, dir_len),
-                                       munged_name, true).data;
+        bare_name = concat_fnames(cbuf_as_string(dir_name, dir_len),
+                                  munged_name, true).data;
+        sibling_name = concat_str(bare_name, UF_SIBLING_SUFFIX);
       }
     }
 
-    // When reading check if the file exists.
-    if (undo_file_name != NULL
-        && (!reading || os_path_exists(undo_file_name))) {
+    if (reading) {
+      // Prefer this directory's sibling-named file over its bare-named one,
+      // but never a sibling in a later 'undodir' entry over a bare match in an
+      // earlier one -- hence the check inside the loop rather than two passes.
+      if (sibling_name != NULL && os_path_exists(sibling_name)) {
+        undo_file_name = sibling_name;
+        sibling_name = NULL;
+      } else if (bare_name != NULL && os_path_exists(bare_name)) {
+        undo_file_name = bare_name;
+        bare_name = NULL;
+      }
+    } else if (sibling) {
+      undo_file_name = sibling_name;
+      sibling_name = NULL;
+    } else {
+      undo_file_name = bare_name;
+      bare_name = NULL;
+    }
+
+    xfree(bare_name);
+    xfree(sibling_name);
+
+    if (undo_file_name != NULL) {
       break;
     }
-    XFREE_CLEAR(undo_file_name);
   }
 
   xfree(munged_name.data);
@@ -975,21 +1051,26 @@ static u_header_T *unserialize_uhp(bufinfo_T *bi, const char *file_name)
   // Unserialize all extmark undo information
   kv_init(uhp->uh_extmark);
 
-  while ((c = undo_read_2c(bi)) == UF_ENTRY_MAGIC) {
-    bool error = false;
-    ExtmarkUndoObject *extup = unserialize_extmark(bi, &error, file_name);
-    if (error) {
+  // The extmark trailer is the *only* thing UF_VERSION 3 added over version 2
+  // (commit f42e932df4).  An older file simply ends the header after the entry
+  // list, so don't go looking for a section that isn't there.
+  if (bi->bi_version >= 3) {
+    while ((c = undo_read_2c(bi)) == UF_ENTRY_MAGIC) {
+      bool error = false;
+      ExtmarkUndoObject *extup = unserialize_extmark(bi, &error, file_name);
+      if (error) {
+        xfree(extup);
+        u_free_uhp(uhp);
+        return NULL;
+      }
+      kv_push(uhp->uh_extmark, *extup);
       xfree(extup);
+    }
+    if (c != UF_ENTRY_END_MAGIC) {
+      corruption_error("entry end", file_name);
       u_free_uhp(uhp);
       return NULL;
     }
-    kv_push(uhp->uh_extmark, *extup);
-    xfree(extup);
-  }
-  if (c != UF_ENTRY_END_MAGIC) {
-    corruption_error("entry end", file_name);
-    u_free_uhp(uhp);
-    return NULL;
   }
 
   return uhp;
@@ -1157,6 +1238,31 @@ static void unserialize_visualinfo(bufinfo_T *bi, visualinfo_T *info)
   info->vi_curswant = undo_read_4c(bi);
 }
 
+/// Reads the format version of the undofile at "file_name".
+///
+/// Used on the write path, where the file is a raw fd rather than a FILE*, so
+/// the 2-byte big-endian field is decoded by hand to match undo_write_bytes().
+///
+/// @return  The version, or -1 if the file cannot be read or does not start
+///          with the undofile magic (i.e. is not an undo file at all).
+static int u_undofile_version(const char *const file_name)
+  FUNC_ATTR_NONNULL_ALL
+{
+  int fd = os_open(file_name, O_RDONLY, 0);
+  if (fd < 0) {
+    return -1;
+  }
+  char mbuf[UF_START_MAGIC_LEN + 2];
+  ssize_t len = read_eintr(fd, mbuf, sizeof(mbuf));
+  close(fd);
+
+  if (len < (ssize_t)sizeof(mbuf)
+      || memcmp(mbuf, UF_START_MAGIC, UF_START_MAGIC_LEN) != 0) {
+    return -1;
+  }
+  return ((uint8_t)mbuf[UF_START_MAGIC_LEN] << 8) | (uint8_t)mbuf[UF_START_MAGIC_LEN + 1];
+}
+
 /// Write the undo tree in an undo file.
 ///
 /// @param[in]  name  Name of the undo file or NULL if this function needs to
@@ -1176,7 +1282,47 @@ void u_write_undo(const char *const name, const bool forceit, buf_T *const buf, 
   bool write_ok = false;
 
   if (name == NULL) {
-    file_name = u_get_undo_file_name(buf->b_ffname, false);
+    // The canonical undo path may already hold a file written in a format wovim
+    // does not write -- an old Vim's, or a pre-extmark Neovim's.  Deleting it to
+    // take the name would destroy undo history nobody asked to lose, so wovim
+    // writes its own history to a versioned sibling instead and never becomes
+    // that file's writer.  The order below keeps the choice deterministic: once
+    // a buffer has been relegated to a sibling, step 1 keeps it there.
+    char *sibling_name = u_get_undo_file_name(buf->b_ffname, false, true);
+    char *bare_name = u_get_undo_file_name(buf->b_ffname, false, false);
+
+    if (bare_name == NULL) {
+      xfree(sibling_name);
+      if (p_verbose > 0) {
+        verbose_enter();
+        smsg(0, "%s", _("Cannot write undo file in any directory in 'undodir'"));
+        verbose_leave();
+      }
+      return;
+    }
+
+    int bare_version = os_path_exists(bare_name) ? u_undofile_version(bare_name) : UF_VERSION;
+
+    if (sibling_name != NULL && os_path_exists(sibling_name)) {
+      // 1. Already writing to the side for this buffer; keep doing so.  Only a
+      //    prior wovim session can have created this exact name, so the
+      //    existing-file check below passes like the ordinary case.
+      file_name = sibling_name;
+      xfree(bare_name);
+    } else if (bare_version == UF_VERSION || bare_version < 0) {
+      // 2. The canonical name is free, ours, or not an undo file at all.  The
+      //    last case keeps today's "will not overwrite" refusal below rather
+      //    than quietly writing somewhere else.
+      file_name = bare_name;
+      xfree(sibling_name);
+    } else {
+      // 3. The canonical name holds a real undofile in a foreign format: the
+      //    bug this all exists to fix.  Start persisting to the side.  Step 1
+      //    already proved this path is free, so it's a plain fresh write.
+      file_name = sibling_name;
+      xfree(bare_name);
+    }
+
     if (file_name == NULL) {
       if (p_verbose > 0) {
         verbose_enter();
@@ -1222,16 +1368,36 @@ void u_write_undo(const char *const name, const bool forceit, buf_T *const buf, 
         }
         goto theend;
       } else {
-        char mbuf[UF_START_MAGIC_LEN];
-        ssize_t len = read_eintr(fd, mbuf, UF_START_MAGIC_LEN);
+        char mbuf[UF_START_MAGIC_LEN + 2];
+        ssize_t len = read_eintr(fd, mbuf, sizeof(mbuf));
         close(fd);
-        if (len < UF_START_MAGIC_LEN
+        if (len < (ssize_t)sizeof(mbuf)
             || memcmp(mbuf, UF_START_MAGIC, UF_START_MAGIC_LEN) != 0) {
           if (name != NULL || p_verbose > 0) {
             if (name == NULL) {
               verbose_enter();
             }
             smsg(0, _("Will not overwrite, this is not an undo file: %s"),
+                 file_name);
+            if (name == NULL) {
+              verbose_leave();
+            }
+          }
+          goto theend;
+        }
+        // Never delete a file written in a format wovim does not write.  This
+        // is deliberately "anything but our own version" rather than a
+        // hardcoded exception for version 2: an unrecognized *future* version
+        // is someone else's data for exactly the same reason an older one is.
+        // undo_write_bytes() writes the most significant byte first.
+        int file_version = ((uint8_t)mbuf[UF_START_MAGIC_LEN] << 8)
+                           | (uint8_t)mbuf[UF_START_MAGIC_LEN + 1];
+        if (file_version != UF_VERSION) {
+          if (name != NULL || p_verbose > 0) {
+            if (name == NULL) {
+              verbose_enter();
+            }
+            smsg(0, _("Will not overwrite undo file in another format: %s"),
                  file_name);
             if (name == NULL) {
               verbose_leave();
@@ -1300,6 +1466,7 @@ void u_write_undo(const char *const name, const bool forceit, buf_T *const buf, 
   bufinfo_T bi = {
     .bi_buf = buf,
     .bi_fp = fp,
+    .bi_version = UF_VERSION,
   };
   if (!serialize_header(&bi, hash)) {
     goto write_error;
@@ -1401,6 +1568,342 @@ static int uhp_table_find(u_header_T **uhp_table, int num_head, int seq)
   return -1;
 }
 
+/// Frees "num_head" headers from a table built by u_read_uhp_table(), and the
+/// table itself.  NULL entries are skipped, so a partially filled table is safe.
+static void u_free_uhp_table(u_header_T **uhp_table, int num_head)
+{
+  if (uhp_table == NULL) {
+    return;
+  }
+  for (int i = 0; i < num_head; i++) {
+    if (uhp_table[i] != NULL) {
+      u_free_uhp(uhp_table[i]);
+    }
+  }
+  xfree(uhp_table);
+}
+
+/// Reads an undofile's table of undo headers and resolves it into a usable
+/// tree: every header is read, the table is sorted on uh_seq, and each header's
+/// uh_next/uh_prev/uh_alt_* sequence numbers are swizzled into pointers.
+///
+/// Deliberately installs nothing.  Two callers need exactly this work but
+/// differ in where the result belongs: u_read_undo() replaces the buffer's live
+/// tree with it, while u_read_undo_legacy() hangs it off the buffer's separate
+/// b_u_legacy_* fields without touching the live tree at all.  So the parse
+/// hands back pointers and lets each caller install them its own way.
+///
+/// "bi" must be positioned immediately after the file's general header data,
+/// with bi_version already set.
+///
+/// @param[out]  out  On success, the parsed table plus the resolved old/new/cur
+///                   header pointers.  The caller takes ownership of
+///                   out->up_table and must free it with u_free_uhp_table().
+///
+/// @return  false on a corrupt file, having freed everything it allocated.
+static bool u_read_uhp_table(bufinfo_T *bi, const char *file_name, int num_head, int old_header_seq,
+                             int new_header_seq, int cur_header_seq, uhp_parse_T *out)
+  FUNC_ATTR_NONNULL_ALL
+{
+  // uhp_table stores the freshly created undo headers until the caller takes
+  // them. The table remains sorted by the sequence numbers of the headers.
+  // When there are no headers uhp_table is NULL.
+  u_header_T **uhp_table = NULL;
+  if (num_head > 0) {
+    uhp_table = xcalloc((size_t)num_head, sizeof(*uhp_table));
+  }
+
+  int num_read_uhps = 0;
+
+  int c;
+  while ((c = undo_read_2c(bi)) == UF_HEADER_MAGIC) {
+    if (num_read_uhps >= num_head) {
+      corruption_error("num_head too small", file_name);
+      goto error;
+    }
+
+    u_header_T *uhp = unserialize_uhp(bi, file_name);
+    if (uhp == NULL) {
+      goto error;
+    }
+    uhp_table[num_read_uhps++] = uhp;
+  }
+
+  if (num_read_uhps != num_head) {
+    corruption_error("num_head", file_name);
+    goto error;
+  }
+  if (c != UF_HEADER_END_MAGIC) {
+    corruption_error("end marker", file_name);
+    goto error;
+  }
+
+  // We have put all of the headers into a table.  Each header stores the
+  // sequence numbers of the headers it links to; resolve those into
+  // pointers.  Every entry is non-NULL: a header that failed to
+  // unserialize or a count mismatch was an error above.
+  if (num_head > 0) {
+    qsort(uhp_table, (size_t)num_head, sizeof(u_header_T *), uhp_seq_cmp);
+  }
+
+  // In the sorted table two headers with the same uh_seq are neighbours.
+  for (int i = 0; i < num_head - 1; i++) {
+    if (uhp_table[i]->uh_seq == uhp_table[i + 1]->uh_seq) {
+      corruption_error("duplicate uh_seq", file_name);
+      goto error;
+    }
+  }
+
+#ifdef U_DEBUG
+  size_t amount = (size_t)num_head * sizeof(int) + 1;
+  int *uhp_table_used = xmalloc(amount);
+  memset(uhp_table_used, 0, amount);
+# define SET_FLAG(j) ++uhp_table_used[j]
+#else
+# define SET_FLAG(j)
+#endif
+
+  // Resolve the sequence number "link".seq into a pointer to the header
+  // with that number.  A number that does not match any header, including
+  // zero (written for a NULL pointer) and the own sequence number of the
+  // header "hidx", resolves to NULL.
+#define SWIZZLE_SEQ(link, hidx) \
+  do { \
+    int fidx = uhp_table_find(uhp_table, num_head, (link).seq); \
+    if (fidx >= 0 && fidx != (hidx)) { \
+      (link).ptr = uhp_table[fidx]; \
+      SET_FLAG(fidx); \
+    } else { \
+      (link).ptr = NULL; \
+    } \
+  } while (0)
+
+  int old_idx = -1;
+  int new_idx = -1;
+  int cur_idx = -1;
+  for (int i = 0; i < num_head; i++) {
+    u_header_T *uhp = uhp_table[i];
+    SWIZZLE_SEQ(uhp->uh_next, i);
+    SWIZZLE_SEQ(uhp->uh_prev, i);
+    SWIZZLE_SEQ(uhp->uh_alt_next, i);
+    SWIZZLE_SEQ(uhp->uh_alt_prev, i);
+    if (old_header_seq > 0 && old_idx < 0 && uhp->uh_seq == old_header_seq) {
+      old_idx = i;
+      SET_FLAG(i);
+    }
+    if (new_header_seq > 0 && new_idx < 0 && uhp->uh_seq == new_header_seq) {
+      new_idx = i;
+      SET_FLAG(i);
+    }
+    if (cur_header_seq > 0 && cur_idx < 0 && uhp->uh_seq == cur_header_seq) {
+      cur_idx = i;
+      SET_FLAG(i);
+    }
+  }
+#undef SWIZZLE_SEQ
+
+#ifdef U_DEBUG
+  for (int i = 0; i < num_head; i++) {
+    if (uhp_table_used[i] == 0) {
+      semsg("uhp_table entry %" PRId64 " not used, leaking memory", (int64_t)i);
+    }
+  }
+  xfree(uhp_table_used);
+#endif
+
+  out->up_table = uhp_table;
+  out->up_num_head = num_head;
+  out->up_old = old_idx < 0 ? NULL : uhp_table[old_idx];
+  out->up_new = new_idx < 0 ? NULL : uhp_table[new_idx];
+  out->up_cur = cur_idx < 0 ? NULL : uhp_table[cur_idx];
+  return true;
+
+error:
+  u_free_uhp_table(uhp_table, num_read_uhps);
+  return false;
+}
+
+/// Frees the lazily-parsed legacy undo tree of "buf" and clears every
+/// b_u_legacy_* field, including the stashed path.
+///
+/// The live tree's own u_freeheader()/u_freebranch() cannot be used here: they
+/// mutate b_u_oldhead/newhead/curhead/numhead as they go.  The legacy tree is
+/// freed straight out of the table the parse handed back instead.
+static void u_free_legacy(buf_T *buf)
+{
+  u_free_uhp_table(buf->b_u_legacy_table, buf->b_u_legacy_numhead);
+  buf->b_u_legacy_table = NULL;
+  buf->b_u_legacy_numhead = 0;
+  XFREE_CLEAR(buf->b_u_legacy_path);
+  buf->b_u_legacy_version = 0;
+  buf->b_u_legacy_oldhead = NULL;
+  buf->b_u_legacy_newhead = NULL;
+  buf->b_u_legacy_curhead = NULL;
+  buf->b_u_legacy_active = false;
+  buf->b_u_legacy_crossed = false;
+}
+
+/// Lazily parses the older-format undofile whose path u_read_undo() stashed on
+/// "buf", into the buffer's b_u_legacy_* fields.
+///
+/// Called on the keystroke that actually needs it -- when a walk backwards runs
+/// off the bottom of the live tree -- not when the file is opened.
+///
+/// The parsed tree is kept structurally disjoint from the live one: no pointer
+/// in a live header ever points at a legacy header or the reverse.  That is the
+/// load-bearing safety property of the whole mechanism, because u_write_undo()
+/// decides what to serialize by walking uh_prev/uh_alt_next/uh_next/uh_alt_prev
+/// from b_u_oldhead.  A single splice across the boundary would let wovim's own
+/// writer quietly copy legacy content into wovim's own undofile.
+///
+/// @return  false if nothing usable could be read, having cleared the stash so
+///          this is not retried on every keystroke.
+static bool u_read_undo_legacy(buf_T *buf)
+  FUNC_ATTR_NONNULL_ALL
+{
+  if (buf->b_u_legacy_path == NULL) {
+    return false;
+  }
+
+  const char *const file_name = buf->b_u_legacy_path;
+  bool ok = false;
+  char *line_ptr = NULL;
+
+  // Nothing below may raise a hard error.  The user pressed "u"; they did not
+  // ask to load this file, and a corrupt or surprising one must degrade to the
+  // ordinary "Already at oldest change" rather than throwing E825 at them (or
+  // aborting a script that happened to contain the keystroke).  The shared
+  // parser reports corruption through semsg(), so silence it here instead of
+  // threading a "quiet" flag through every layer it calls.
+  const int save_emsg_silent = emsg_silent;
+  const int save_did_emsg = did_emsg;
+  emsg_silent++;
+
+  FILE *fp = os_fopen(file_name, "r");
+  if (fp == NULL) {
+    goto theend;
+  }
+
+  FileInfo file_info;
+  bufinfo_T bi = {
+    .bi_buf = buf,
+    .bi_fp = fp,
+    // undo_read_len()'s bounds check is gated on a non-zero bi_fsize, and it
+    // backs every count and length read below.  Leaving it unset would strip
+    // the sanity checking from the one file this mechanism exists not to trust.
+    .bi_fsize = os_fileinfo_fd(fileno(fp), &file_info) ? (off_T)os_fileinfo_size(&file_info) : 0,
+  };
+
+  char magic_buf[UF_START_MAGIC_LEN];
+  if (fread(magic_buf, UF_START_MAGIC_LEN, 1, fp) != 1
+      || memcmp(magic_buf, UF_START_MAGIC, UF_START_MAGIC_LEN) != 0) {
+    goto theend;
+  }
+  int version = get2c(fp);
+  if (version != buf->b_u_legacy_version) {
+    // The file changed underneath us since it was recognized.
+    goto theend;
+  }
+  bi.bi_version = version;
+
+  // Replay u_read_undo()'s field order exactly, discarding everything that
+  // isn't an input to u_read_uhp_table().
+  //
+  // The hash and line count are deliberately read-and-dropped rather than
+  // verified.  By the time this runs the user has been editing, so the buffer
+  // no longer matches the file's stored hash and re-checking it would mean the
+  // feature never fires.  The check is not lost: it already ran once, at stash
+  // time in u_read_undo(), against the on-disk text -- which is exactly the
+  // state the live tree bottoms out at, which is exactly where this gets read.
+  uint8_t read_hash[UNDO_HASH_SIZE];
+  if (!undo_read(&bi, read_hash, UNDO_HASH_SIZE)) {
+    goto theend;
+  }
+  undo_read_4c(&bi);  // line count
+
+  // Undo data for the "U" command: read past it, the live buffer keeps its own.
+  int str_len = undo_read_len(&bi, "line length", file_name);
+  if (str_len < 0) {
+    goto theend;
+  }
+  if (str_len > 0) {
+    line_ptr = undo_read_string(&bi, (size_t)str_len);
+    if (line_ptr == NULL) {
+      goto theend;
+    }
+    XFREE_CLEAR(line_ptr);
+  }
+  undo_read_4c(&bi);  // line lnum
+  undo_read_4c(&bi);  // line colnr
+
+  int old_header_seq = undo_read_4c(&bi);
+  int new_header_seq = undo_read_4c(&bi);
+  int cur_header_seq = undo_read_4c(&bi);
+  int num_head = undo_read_len(&bi, "num_head", file_name);
+  if (num_head < 0) {
+    goto theend;
+  }
+  undo_read_4c(&bi);    // seq_last
+  undo_read_4c(&bi);    // seq_cur
+  undo_read_time(&bi);  // seq_time
+
+  // Optional header fields.  Nothing here is used; skipping "len" bytes
+  // consumes exactly what reading a known field would have.
+  while (true) {
+    int len = undo_read_byte(&bi);
+
+    if (len == 0 || len == EOF) {
+      break;
+    }
+    undo_read_byte(&bi);  // field id
+    while (--len >= 0) {
+      undo_read_byte(&bi);
+    }
+  }
+
+  uhp_parse_T parsed;
+  if (!u_read_uhp_table(&bi, file_name, num_head, old_header_seq, new_header_seq,
+                        cur_header_seq, &parsed)) {
+    goto theend;
+  }
+
+  if (parsed.up_old == NULL || parsed.up_new == NULL) {
+    // Nothing to walk into.  Treat as unusable so the stash is cleared and we
+    // don't re-parse this file on every subsequent keystroke.
+    u_free_uhp_table(parsed.up_table, parsed.up_num_head);
+    goto theend;
+  }
+
+  buf->b_u_legacy_table = parsed.up_table;
+  buf->b_u_legacy_numhead = parsed.up_num_head;
+  buf->b_u_legacy_oldhead = parsed.up_old;
+  buf->b_u_legacy_newhead = parsed.up_new;
+  // parsed.up_cur is intentionally dropped: the walk tracks its own position in
+  // b_u_legacy_curhead rather than resuming one recorded inside the file.
+  ok = true;
+
+theend:
+  xfree(line_ptr);
+  if (fp != NULL) {
+    fclose(fp);
+  }
+  emsg_silent = save_emsg_silent;
+  did_emsg = save_did_emsg;
+  if (!ok) {
+    if (p_verbose > 0) {
+      verbose_enter();
+      smsg(0, _("Cannot use undo history from an older format: %s"), file_name);
+      verbose_leave();
+    }
+    // Clears b_u_legacy_path, so a corrupt file is not retried every keystroke.
+    // The caller falls through to the ordinary "Already at oldest change": a
+    // bad legacy file must never become a hard error for something the user
+    // did not explicitly ask to load.
+    u_free_legacy(buf);
+  }
+  return ok;
+}
+
 /// Loads the undo tree from an undo file.
 /// If "name" is not NULL use it as the undo file name. This also means being
 /// a bit more verbose.
@@ -1409,12 +1912,11 @@ static int uhp_table_find(u_header_T **uhp_table, int num_head, int seq)
 void u_read_undo(char *name, const uint8_t *hash, const char *orig_name FUNC_ATTR_UNUSED)
   FUNC_ATTR_NONNULL_ARG(2)
 {
-  u_header_T **uhp_table = NULL;
   char *line_ptr = NULL;
 
   char *file_name;
   if (name == NULL) {
-    file_name = u_get_undo_file_name(curbuf->b_ffname, true);
+    file_name = u_get_undo_file_name(curbuf->b_ffname, true, false);
     if (file_name == NULL) {
       return;
     }
@@ -1470,10 +1972,20 @@ void u_read_undo(char *name, const uint8_t *hash, const char *orig_name FUNC_ATT
     semsg(_("E823: Not an undo file: %s"), file_name);
     goto error;
   }
+  // The version only decides what happens *after* the hash check below, which
+  // uses fields laid out identically in every version this can reach.  Erroring
+  // out here, before the hash is even looked at, is what used to make an older
+  // file indistinguishable from a broken one.
   int version = get2c(fp);
+  bi.bi_version = version;
+  bool legacy = false;
   if (version != UF_VERSION) {
-    semsg(_("E824: Incompatible undo file: %s"), file_name);
-    goto error;
+    if (version == UF_VERSION_LEGACY) {
+      legacy = true;
+    } else {
+      semsg(_("E824: Incompatible undo file: %s"), file_name);
+      goto error;
+    }
   }
 
   uint8_t read_hash[UNDO_HASH_SIZE];
@@ -1494,6 +2006,21 @@ void u_read_undo(char *name, const uint8_t *hash, const char *orig_name FUNC_ATT
       }
     }
     goto error;
+  }
+
+  if (legacy && name == NULL) {
+    // An older-format undofile whose hash matches this buffer's text is not a
+    // failure and not something to load now -- it is history sitting *behind*
+    // whatever this session is about to record.  Remember where it is and
+    // return as if there were no undofile at all; u_legacy_step() will read it
+    // lazily if a walk backwards ever reaches it.  No message: nothing is wrong.
+    //
+    // An explicit path (":rundo file") skips this and takes the full-install
+    // door below instead: asking for a file by name is asking to adopt it.
+    u_free_legacy(curbuf);
+    curbuf->b_u_legacy_path = xstrdup(file_name);
+    curbuf->b_u_legacy_version = version;
+    goto theend;
   }
 
   // Read undo data for "U" command.
@@ -1550,109 +2077,23 @@ void u_read_undo(char *name, const uint8_t *hash, const char *orig_name FUNC_ATT
     }
   }
 
-  // uhp_table will store the freshly created undo headers we allocate
-  // until we insert them into curbuf. The table remains sorted by the
-  // sequence numbers of the headers.
-  // When there are no headers uhp_table is NULL.
-  if (num_head > 0) {
-    uhp_table = xcalloc((size_t)num_head, sizeof(*uhp_table));
-  }
-
-  int num_read_uhps = 0;
-
-  int c;
-  while ((c = undo_read_2c(&bi)) == UF_HEADER_MAGIC) {
-    if (num_read_uhps >= num_head) {
-      corruption_error("num_head too small", file_name);
-      goto error;
-    }
-
-    u_header_T *uhp = unserialize_uhp(&bi, file_name);
-    if (uhp == NULL) {
-      goto error;
-    }
-    uhp_table[num_read_uhps++] = uhp;
-  }
-
-  if (num_read_uhps != num_head) {
-    corruption_error("num_head", file_name);
+  uhp_parse_T parsed;
+  if (!u_read_uhp_table(&bi, file_name, num_head, old_header_seq, new_header_seq,
+                        cur_header_seq, &parsed)) {
     goto error;
   }
-  if (c != UF_HEADER_END_MAGIC) {
-    corruption_error("end marker", file_name);
-    goto error;
-  }
-
-#ifdef U_DEBUG
-  size_t amount = num_head * sizeof(int) + 1;
-  int *uhp_table_used = xmalloc(amount);
-  memset(uhp_table_used, 0, amount);
-# define SET_FLAG(j) ++uhp_table_used[j]
-#else
-# define SET_FLAG(j)
-#endif
-
-  // We have put all of the headers into a table.  Each header stores the
-  // sequence numbers of the headers it links to; resolve those into
-  // pointers.  Every entry is non-NULL: a header that failed to
-  // unserialize or a count mismatch was an error above.
-  if (num_head > 0) {
-    qsort(uhp_table, (size_t)num_head, sizeof(u_header_T *), uhp_seq_cmp);
-  }
-
-  // In the sorted table two headers with the same uh_seq are neighbours.
-  for (int i = 0; i < num_head - 1; i++) {
-    if (uhp_table[i]->uh_seq == uhp_table[i + 1]->uh_seq) {
-      corruption_error("duplicate uh_seq", file_name);
-      goto error;
-    }
-  }
-
-  // Resolve the sequence number "link".seq into a pointer to the header
-  // with that number.  A number that does not match any header, including
-  // zero (written for a NULL pointer) and the own sequence number of the
-  // header "hidx", resolves to NULL.
-#define SWIZZLE_SEQ(link, hidx) \
-  do { \
-    int fidx = uhp_table_find(uhp_table, num_head, (link).seq); \
-    if (fidx >= 0 && fidx != (hidx)) { \
-      (link).ptr = uhp_table[fidx]; \
-      SET_FLAG(fidx); \
-    } else { \
-      (link).ptr = NULL; \
-    } \
-  } while (0)
-
-  int old_idx = -1;
-  int new_idx = -1;
-  int cur_idx = -1;
-  for (int i = 0; i < num_head; i++) {
-    u_header_T *uhp = uhp_table[i];
-    SWIZZLE_SEQ(uhp->uh_next, i);
-    SWIZZLE_SEQ(uhp->uh_prev, i);
-    SWIZZLE_SEQ(uhp->uh_alt_next, i);
-    SWIZZLE_SEQ(uhp->uh_alt_prev, i);
-    if (old_header_seq > 0 && old_idx < 0 && uhp->uh_seq == old_header_seq) {
-      old_idx = i;
-      SET_FLAG(i);
-    }
-    if (new_header_seq > 0 && new_idx < 0 && uhp->uh_seq == new_header_seq) {
-      new_idx = i;
-      SET_FLAG(i);
-    }
-    if (cur_header_seq > 0 && cur_idx < 0 && uhp->uh_seq == cur_header_seq) {
-      cur_idx = i;
-      SET_FLAG(i);
-    }
-  }
-#undef SWIZZLE_SEQ
 
   // Now that we have read the undo info successfully, free the current undo
   // info and use the info from the file.
   u_blockfree(curbuf);
-  curbuf->b_u_oldhead = old_idx < 0 ? NULL : uhp_table[old_idx];
-  curbuf->b_u_newhead = new_idx < 0 ? NULL : uhp_table[new_idx];
-  curbuf->b_u_curhead = cur_idx < 0 ? NULL : uhp_table[cur_idx];
+  // A full load supersedes any older-format file stashed for lazy reading:
+  // this buffer's history now comes from here.  For ":rundo oldfile" that is
+  // the promotion step -- those headers are live headers from now on, owned
+  // and rewritable like any other, with no legacy tree left beside them.
+  u_free_legacy(curbuf);
+  curbuf->b_u_oldhead = parsed.up_old;
+  curbuf->b_u_newhead = parsed.up_new;
+  curbuf->b_u_curhead = parsed.up_cur;
   curbuf->b_u_line_ptr = line_ptr;
   curbuf->b_u_line_lnum = line_lnum;
   curbuf->b_u_line_colnr = line_colnr;
@@ -1664,15 +2105,9 @@ void u_read_undo(char *name, const uint8_t *hash, const char *orig_name FUNC_ATT
   curbuf->b_u_save_nr_cur = last_save_nr;
 
   curbuf->b_u_synced = true;
-  xfree(uhp_table);
+  xfree(parsed.up_table);
 
 #ifdef U_DEBUG
-  for (int i = 0; i < num_head; i++) {
-    if (uhp_table_used[i] == 0) {
-      semsg("uhp_table entry %" PRId64 " not used, leaking memory", (int64_t)i);
-    }
-  }
-  xfree(uhp_table_used);
   u_check(true);
 #endif
 
@@ -1683,14 +2118,6 @@ void u_read_undo(char *name, const uint8_t *hash, const char *orig_name FUNC_ATT
 
 error:
   xfree(line_ptr);
-  if (uhp_table != NULL) {
-    for (int i = 0; i < num_read_uhps; i++) {
-      if (uhp_table[i] != NULL) {
-        u_free_uhp(uhp_table[i]);
-      }
-    }
-    xfree(uhp_table);
-  }
 
 theend:
   if (fp != NULL) {
@@ -1833,7 +2260,7 @@ void u_undo(int count)
   } else {
     undo_undoes = !undo_undoes;
   }
-  u_doit(count, false, true);
+  u_doit(count, false, true, true);
 }
 
 /// If 'cpoptions' contains 'u': Repeat the previous undo or redo.
@@ -1844,7 +2271,7 @@ void u_redo(int count)
     undo_undoes = false;
   }
 
-  u_doit(count, false, true);
+  u_doit(count, false, true, true);
 }
 
 /// Undo and remove the branch from the undo tree.
@@ -1858,7 +2285,7 @@ bool u_undo_and_forget(int count, bool do_buf_event)
     count = 1;
   }
   undo_undoes = true;
-  u_doit(count, true, do_buf_event);
+  u_doit(count, true, do_buf_event, false);
 
   if (curbuf->b_u_curhead == NULL) {
     // nothing was undone.
@@ -1892,12 +2319,100 @@ bool u_undo_and_forget(int count, bool do_buf_event)
   return true;
 }
 
+/// Takes one undo or redo step inside the buffer's older-format undo history,
+/// crossing into it from the live tree when a walk backwards has run out of
+/// live history, and crossing back out on the way forward.
+///
+/// The boundary is crossed procedurally -- by reading b_u_legacy_curhead
+/// instead of b_u_curhead -- never by splicing a pointer between the two trees.
+/// See u_read_undo_legacy() for why that distinction is load-bearing.
+///
+/// The caller is responsible for only offering the undo direction when the live
+/// tree really is exhausted; u_doit() knows that by position, undo_time() checks
+/// b_u_seq_cur.
+///
+/// @param undo  If `true`, walk further back; if `false`, walk forward.
+///
+/// @return  true if a step was taken, so the caller skips its own
+///          "Already at oldest/newest change".
+static bool u_legacy_step(buf_T *buf, bool undo, bool do_buf_event)
+  FUNC_ATTR_NONNULL_ALL
+{
+  u_header_T *hdr;
+  bool entering = false;
+
+  if (undo) {
+    if (buf->b_u_legacy_active) {
+      hdr = buf->b_u_legacy_curhead->uh_next.ptr;
+    } else {
+      if (buf->b_u_legacy_path == NULL) {
+        return false;
+      }
+      if (buf->b_u_legacy_oldhead == NULL && !u_read_undo_legacy(buf)) {
+        return false;
+      }
+      // Resume where a previous visit left off rather than restarting at the
+      // newest legacy change: an edit made mid-visit only ended the visit, it
+      // did not move the position.
+      hdr = buf->b_u_legacy_curhead != NULL
+            ? buf->b_u_legacy_curhead->uh_next.ptr
+            : buf->b_u_legacy_newhead;
+      entering = true;
+    }
+    if (hdr == NULL) {
+      return false;  // genuinely at the oldest change there is
+    }
+    buf->b_u_legacy_curhead = hdr;
+    buf->b_u_legacy_active = true;
+  } else {
+    if (!buf->b_u_legacy_active) {
+      return false;
+    }
+    hdr = buf->b_u_legacy_curhead;
+  }
+
+  // b_u_seq_cur and b_u_save_nr_cur are coordinates in the *live* tree, and a
+  // legacy header's uh_seq belongs to a different numbering space entirely
+  // (both trees count from 1).  u_undoredo() would happily write one into the
+  // other, corrupting what g- arithmetic and undo_time()'s direction test read.
+  // Pinning b_u_seq_cur to 0 is not a fudge: the live tree genuinely is at its
+  // own origin for as long as the walk is in legacy history.  b_u_time_cur is
+  // left as u_undoredo() set it -- that is the honest timestamp of the change
+  // being shown, and it makes the reported "before #0  <old date>" read right.
+  int save_nr_cur = buf->b_u_save_nr_cur;
+  u_undoredo(undo, do_buf_event, hdr);
+  buf->b_u_save_nr_cur = save_nr_cur;
+  buf->b_u_seq_cur = 0;
+
+  if (undo) {
+    if (entering && !buf->b_u_legacy_crossed) {
+      if (!shortmess(kShmUndo)) {
+        msg(_("(now in undo history from an older format)"), 0);
+      }
+      buf->b_u_legacy_crossed = true;
+    }
+  } else if (buf->b_u_legacy_curhead->uh_prev.ptr == NULL) {
+    // That was the newest legacy change; the next redo belongs to the live
+    // tree's oldest change, so hand the walk back over.
+    buf->b_u_legacy_curhead = NULL;
+    buf->b_u_legacy_active = false;
+    buf->b_u_curhead = buf->b_u_oldhead;
+  } else {
+    buf->b_u_legacy_curhead = buf->b_u_legacy_curhead->uh_prev.ptr;
+  }
+  return true;
+}
+
 /// Undo or redo, depending on `undo_undoes`, `count` times.
 ///
 /// @param startcount How often to undo or redo
 /// @param quiet If `true`, don't show messages
 /// @param do_buf_event If `true`, send the changedtick with the buffer updates
-static void u_doit(int startcount, bool quiet, bool do_buf_event)
+/// @param allow_legacy If `true`, running out of history here may continue into
+///                     an older-format undofile.  False for internal callers
+///                     unwinding a tree they built themselves: crossing into
+///                     the user's real history would be badly wrong there.
+static void u_doit(int startcount, bool quiet, bool do_buf_event, bool allow_legacy)
 {
   if (!undo_allowed(curbuf)) {
     return;
@@ -1920,28 +2435,49 @@ static void u_doit(int startcount, bool quiet, bool do_buf_event)
     change_warning(curbuf, 0);
 
     if (undo_undoes) {
-      if (curbuf->b_u_curhead == NULL) {  // first undo
-        curbuf->b_u_curhead = curbuf->b_u_newhead;
-      } else if (get_undolevel(curbuf) > 0) {  // multi level undo
-        // get next undo
-        curbuf->b_u_curhead = curbuf->b_u_curhead->uh_next.ptr;
-      }
-      // nothing to undo
-      if (curbuf->b_u_numhead == 0 || curbuf->b_u_curhead == NULL) {
-        // stick curbuf->b_u_curhead at end
-        curbuf->b_u_curhead = curbuf->b_u_oldhead;
-        beep_flush();
-        if (count == startcount - 1) {
-          if (!shortmess(kShmUndo)) {
-            msg(_("Already at oldest change"), 0);
-          }
-          return;
+      if (allow_legacy && curbuf->b_u_legacy_active) {
+        // Already walking an older-format undofile: stay in it.  The live tree
+        // is exhausted and its b_u_curhead stays pinned for the way back out.
+        if (u_legacy_step(curbuf, true, do_buf_event)) {
+          continue;
         }
-        break;
+      } else {
+        if (curbuf->b_u_curhead == NULL) {  // first undo
+          curbuf->b_u_curhead = curbuf->b_u_newhead;
+        } else if (get_undolevel(curbuf) > 0) {  // multi level undo
+          // get next undo
+          curbuf->b_u_curhead = curbuf->b_u_curhead->uh_next.ptr;
+        }
+        if (curbuf->b_u_numhead != 0 && curbuf->b_u_curhead != NULL) {
+          u_undoredo(true, do_buf_event, curbuf->b_u_curhead);
+          continue;
+        }
+        // Nothing left to undo in this session's own history.
+        // Stick curbuf->b_u_curhead at end.
+        curbuf->b_u_curhead = curbuf->b_u_oldhead;
+        // Before giving up: an undofile in an older format may be sitting at
+        // this buffer's undo path with more history behind ours.  Walking into
+        // it is what makes "u" keep working across the format boundary instead
+        // of stopping where this session's history happens to begin.
+        if (allow_legacy && u_legacy_step(curbuf, true, do_buf_event)) {
+          continue;
+        }
       }
 
-      u_undoredo(true, do_buf_event);
+      beep_flush();
+      if (count == startcount - 1) {
+        if (!shortmess(kShmUndo)) {
+          msg(_("Already at oldest change"), 0);
+        }
+        return;
+      }
+      break;
     } else {
+      // A redo while inside legacy history must never touch the live tree.
+      if (allow_legacy && u_legacy_step(curbuf, false, do_buf_event)) {
+        continue;
+      }
+
       if (curbuf->b_u_curhead == NULL || get_undolevel(curbuf) <= 0) {
         beep_flush();  // nothing to redo
         if (count == startcount - 1) {
@@ -1953,7 +2489,7 @@ static void u_doit(int startcount, bool quiet, bool do_buf_event)
         break;
       }
 
-      u_undoredo(false, do_buf_event);
+      u_undoredo(false, do_buf_event, curbuf->b_u_curhead);
 
       // Advance for next redo.  Set "newhead" when at the end of the
       // redoable changes.
@@ -1989,6 +2525,31 @@ void undo_time(int step, bool sec, bool file, bool absolute)
   u_oldcount = 0;
   if (curbuf->b_ml.ml_flags & ML_EMPTY) {
     u_oldcount = -1;
+  }
+
+  // "g-"/"g+" -- a plain single step -- may cross into an older-format undofile
+  // exactly like "u"/CTRL-R do.
+  //
+  // This is a pre-check rather than a fallback at the "Already at oldest
+  // change" message further down, because that message is unreachable for "g-"
+  // at the bottom of the tree: undoing the oldest header leaves b_u_seq_cur at
+  // 0, so "target" clamps to 0 and jumps straight to target_zero, never running
+  // the search that guards it.  And "g+" while already inside legacy history
+  // must not reach the live-tree search at all -- b_u_curhead is pinned
+  // non-NULL there, so the search would redo live headers over legacy text.
+  //
+  // The general ":undo N" / ":earlier" search below deliberately stays
+  // live-tree-only: there is no shared sequence-number space in which to name a
+  // legacy change, so a legacy-only number behaves as any unknown number does.
+  if (!absolute && !sec && !file && (step == -1 || step == 1)) {
+    // b_u_seq_cur == 0 means the live tree is sitting at its own origin, i.e.
+    // a backwards step really has run out of this session's history.
+    const bool at_live_origin = step < 0 && curbuf->b_u_seq_cur == 0;
+    if ((curbuf->b_u_legacy_active || at_live_origin)
+        && u_legacy_step(curbuf, step < 0, true)) {
+      u_undo_end(step < 0, false, false);
+      return;
+    }
   }
 
   // "target" and "closest" hold a timestamp when "dosec" is set, otherwise a
@@ -2210,7 +2771,7 @@ target_zero:
         break;
       }
       curbuf->b_u_curhead = uhp;
-      u_undoredo(true, true);
+      u_undoredo(true, true, curbuf->b_u_curhead);
       if (target > 0) {
         uhp->uh_walk = nomark;          // don't go back down here
       }
@@ -2277,7 +2838,7 @@ target_zero:
           break;
         }
 
-        u_undoredo(false, true);
+        u_undoredo(false, true, curbuf->b_u_curhead);
 
         // Advance "curhead" to below the header we last used.  If it
         // becomes NULL then we need to set "newhead" to this leaf.
@@ -2311,7 +2872,11 @@ target_zero:
 ///
 /// @param undo If `true`, go up the tree. Down if `false`.
 /// @param do_buf_event If `true`, send buffer updates.
-static void u_undoredo(bool undo, bool do_buf_event)
+/// @param curhead The header to apply. Normally curbuf->b_u_curhead, but the
+///                caller passes it explicitly so a header from the buffer's
+///                separate legacy tree can be applied without ever being
+///                reachable from a live b_u_* pointer.
+static void u_undoredo(bool undo, bool do_buf_event, u_header_T *curhead)
 {
   char **newarray = NULL;
   linenr_T newlnum = MAXLNUM;
@@ -2319,7 +2884,6 @@ static void u_undoredo(bool undo, bool do_buf_event)
   u_entry_T *nuep;
   u_entry_T *newlist = NULL;
   fmark_T namedm[NMARKS];
-  u_header_T *curhead = curbuf->b_u_curhead;
 
   // Don't want autocommands using the undo structures here, they are
   // invalid till the end.
@@ -3076,6 +3640,12 @@ void u_clearallandblockfree(buf_T *buf)
 {
   u_blockfree(buf);
   u_clearall(buf);
+  // Deliberately here and not in u_blockfree(): this fork's u_rollback() calls
+  // that on every keystroke of an 'inccommand' preview to drop its speculative
+  // tree, and clearing the legacy stash there would silently switch the feature
+  // off the moment the user typed ":s/".  Every caller of *this* function is
+  // discarding the buffer's history for real.
+  u_free_legacy(buf);
 }
 
 /// Save the line "lnum" for the "U" command.
@@ -3249,7 +3819,9 @@ void f_undofile(typval_T *argvars, typval_T *rettv, EvalFuncData fptr)
     char *ffname = FullName_save(fname, true);
 
     if (ffname != NULL) {
-      rettv->vval.v_string = u_get_undo_file_name(ffname, false);
+      // Always the canonical name: undofile() reports where undo history for
+      // this file belongs, not wherever a write may have been diverted to.
+      rettv->vval.v_string = u_get_undo_file_name(ffname, false, false);
     }
     xfree(ffname);
   }

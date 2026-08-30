@@ -508,6 +508,24 @@ struct file_buffer {
   linenr_T b_u_line_lnum;       // line number of line in u_line
   colnr_T b_u_line_colnr;       // optional column number
 
+  // Undo history found at this buffer's undo path in an older format than the
+  // one wovim writes, read lazily on the keystroke that walks into it.  The
+  // parsed tree is kept structurally disjoint from the live tree above: no
+  // pointer in a live header ever points at one of these, or the reverse.  See
+  // u_read_undo_legacy() and u_legacy_step() in undo.c.
+  char *b_u_legacy_path;            // path of the older-format undofile
+  int b_u_legacy_version;           // its format version (only 2 today)
+  u_header_T **b_u_legacy_table;    // parsed headers, kept only to free them
+  int b_u_legacy_numhead;           // entries in b_u_legacy_table
+  u_header_T *b_u_legacy_oldhead;   // oldest legacy header, NULL until parsed
+  u_header_T *b_u_legacy_newhead;   // newest legacy header, NULL until parsed
+  u_header_T *b_u_legacy_curhead;   // last legacy header applied.  A persistent
+                                    // position, not a presence flag: it
+                                    // survives edits so a later crossing
+                                    // resumes rather than restarting
+  bool b_u_legacy_active;           // walk is inside legacy history right now
+  bool b_u_legacy_crossed;          // one-shot message already shown
+
   bool b_scanned;               // ^N/^P have scanned this buffer
 
   // flags for use of ":lmap" and IM control
