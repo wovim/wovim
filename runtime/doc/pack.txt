@@ -1,4 +1,4 @@
-*pack.txt*                            Nvim
+*pack.txt*                            wovim
 
                             NVIM REFERENCE MANUAL
 

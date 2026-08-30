@@ -1,4 +1,4 @@
-*credits.txt*          Nvim
+*credits.txt*          wovim
 
 
                      NVIM REFERENCE MANUAL

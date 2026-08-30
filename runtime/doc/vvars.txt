@@ -1,4 +1,4 @@
-*vvars.txt*	Nvim
+*vvars.txt*	wovim
 
 
                 NVIM REFERENCE MANUAL

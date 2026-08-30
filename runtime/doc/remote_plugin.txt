@@ -1,4 +1,4 @@
-*remote_plugin.txt*    Nvim
+*remote_plugin.txt*    wovim
 
 
 		 NVIM REFERENCE MANUAL	  by Thiago de Arruda

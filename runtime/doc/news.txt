@@ -1,4 +1,4 @@
-*news.txt*    Nvim
+*news.txt*    wovim
 
 
                             NVIM REFERENCE MANUAL

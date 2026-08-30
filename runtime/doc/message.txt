@@ -1,4 +1,4 @@
-*message.txt*   Nvim
+*message.txt*   wovim
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar

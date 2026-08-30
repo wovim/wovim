@@ -1,4 +1,4 @@
-*pi_tar.txt*	Nvim
+*pi_tar.txt*	wovim
 
 		       +====================+
 		       | Tar File Interface |

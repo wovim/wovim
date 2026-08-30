@@ -1,4 +1,4 @@
-*if_ruby.txt*          Nvim
+*if_ruby.txt*          wovim
 
 
 		  VIM REFERENCE MANUAL	  by Shugo Maeda

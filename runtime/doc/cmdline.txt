@@ -1,4 +1,4 @@
-*cmdline.txt*   Nvim
+*cmdline.txt*   wovim
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar

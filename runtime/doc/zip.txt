@@ -1,4 +1,4 @@
-*zip.txt*    Nvim
+*zip.txt*    wovim
 
 
                             NVIM REFERENCE MANUAL

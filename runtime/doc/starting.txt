@@ -1,4 +1,4 @@
-*starting.txt*  Nvim
+*starting.txt*  wovim
 
 
                   VIM REFERENCE MANUAL    by Bram Moolenaar

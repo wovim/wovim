@@ -1,4 +1,4 @@
-*diff.txt*      Nvim
+*diff.txt*      wovim
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar

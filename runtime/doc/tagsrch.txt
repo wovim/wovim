@@ -1,4 +1,4 @@
-*tagsrch.txt*   Nvim
+*tagsrch.txt*   wovim
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar

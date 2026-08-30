@@ -1,4 +1,4 @@
-*editing.txt*   Nvim
+*editing.txt*   wovim
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar

@@ -1,4 +1,4 @@
-*spell.txt*     Nvim
+*spell.txt*     wovim
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar

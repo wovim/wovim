@@ -1,4 +1,4 @@
-*usr_20.txt*	Nvim
+*usr_20.txt*	wovim
 
 
 		     VIM USER MANUAL	by Bram Moolenaar

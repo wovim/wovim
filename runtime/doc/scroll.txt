@@ -1,4 +1,4 @@
-*scroll.txt*    Nvim
+*scroll.txt*    wovim
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar

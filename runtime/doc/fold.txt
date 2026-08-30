@@ -1,4 +1,4 @@
-*fold.txt*      Nvim
+*fold.txt*      wovim
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar

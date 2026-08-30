@@ -1,4 +1,4 @@
-*change.txt*    Nvim
+*change.txt*    wovim
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar

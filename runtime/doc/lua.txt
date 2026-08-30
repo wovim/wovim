@@ -1,4 +1,4 @@
-*lua.txt*    Nvim
+*lua.txt*    wovim
 
 
                             NVIM REFERENCE MANUAL

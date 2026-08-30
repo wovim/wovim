@@ -1,4 +1,4 @@
-*channel.txt*    Nvim
+*channel.txt*    wovim
 
 
 		 NVIM REFERENCE MANUAL    by Thiago de Arruda

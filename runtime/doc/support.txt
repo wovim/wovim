@@ -1,4 +1,4 @@
-*support.txt*			    Nvim
+*support.txt*			    wovim
 
 
                             NVIM REFERENCE MANUAL

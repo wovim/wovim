@@ -1,4 +1,4 @@
-*health.txt*               Nvim
+*health.txt*               wovim
 
 
                  NVIM REFERENCE MANUAL

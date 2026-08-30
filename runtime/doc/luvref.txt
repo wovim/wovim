@@ -1,4 +1,4 @@
-*luvref.txt*               Nvim
+*luvref.txt*               wovim
 
 
                     LUV REFERENCE MANUAL

@@ -1,4 +1,4 @@
-*api.txt*               Nvim
+*api.txt*               wovim
 
 
                  NVIM REFERENCE MANUAL    by Thiago de Arruda

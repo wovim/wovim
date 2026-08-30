@@ -1,4 +1,4 @@
-*intro.txt*     Nvim
+*intro.txt*     wovim
 
 
                             NVIM REFERENCE MANUAL

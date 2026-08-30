@@ -1,4 +1,4 @@
-*tips.txt*      Nvim
+*tips.txt*      wovim
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar

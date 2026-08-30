@@ -1,4 +1,4 @@
-*helphelp.txt*	Nvim
+*helphelp.txt*	wovim
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar

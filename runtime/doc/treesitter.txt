@@ -1,4 +1,4 @@
-*treesitter.txt*    Nvim
+*treesitter.txt*    wovim
 
 
                             NVIM REFERENCE MANUAL

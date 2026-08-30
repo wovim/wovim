@@ -1,4 +1,4 @@
-*sign.txt*      Nvim
+*sign.txt*      wovim
 
 
 		  VIM REFERENCE MANUAL	  by Gordon Prieur

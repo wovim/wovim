@@ -1,4 +1,4 @@
-*quickfix.txt*  Nvim
+*quickfix.txt*  wovim
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar

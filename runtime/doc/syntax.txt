@@ -1,4 +1,4 @@
-*syntax.txt*	Nvim
+*syntax.txt*	wovim
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar

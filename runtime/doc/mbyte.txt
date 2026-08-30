@@ -1,4 +1,4 @@
-*mbyte.txt*     Nvim
+*mbyte.txt*     wovim
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar et al.

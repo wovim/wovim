@@ -1,4 +1,4 @@
-*usr_24.txt*	Nvim
+*usr_24.txt*	wovim
 
 
 		     VIM USER MANUAL	by Bram Moolenaar

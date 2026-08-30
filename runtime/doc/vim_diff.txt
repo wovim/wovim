@@ -1,4 +1,4 @@
-*vim_diff.txt*    Nvim
+*vim_diff.txt*    wovim
 
 
                             NVIM REFERENCE MANUAL

@@ -1,4 +1,4 @@
-*luaref.txt*           Nvim
+*luaref.txt*           wovim
                                                                 *luaref*
 
                              LUA REFERENCE MANUAL

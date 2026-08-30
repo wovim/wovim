@@ -1,4 +1,4 @@
-*dev_vimpatch.txt*          Nvim
+*dev_vimpatch.txt*          wovim
 
                             NVIM REFERENCE MANUAL
 

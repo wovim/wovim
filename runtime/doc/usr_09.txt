@@ -1,4 +1,4 @@
-*usr_09.txt*	Nvim
+*usr_09.txt*	wovim
 
 
 		     VIM USER MANUAL	by Bram Moolenaar

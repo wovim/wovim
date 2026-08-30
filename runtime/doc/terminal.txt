@@ -1,4 +1,4 @@
-*terminal.txt*   Nvim
+*terminal.txt*   wovim
 
 
                             NVIM REFERENCE MANUAL

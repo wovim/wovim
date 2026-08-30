@@ -1,4 +1,4 @@
-*ft_ada.txt*	Nvim
+*ft_ada.txt*	wovim
 
 
 		    ADA FILE TYPE PLUG-INS REFERENCE MANUAL~

@@ -1,4 +1,4 @@
-*undo.txt*      Nvim
+*undo.txt*      wovim
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar

@@ -1,4 +1,4 @@
-*pi_spec.txt*   Nvim
+*pi_spec.txt*   wovim
 
 by Gustavo Niemeyer ~
 

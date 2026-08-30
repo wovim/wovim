@@ -1,4 +1,4 @@
-*repeat.txt*    Nvim
+*repeat.txt*    wovim
 
 
                             NVIM REFERENCE MANUAL

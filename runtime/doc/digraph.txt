@@ -1,4 +1,4 @@
-*digraph.txt*   Nvim
+*digraph.txt*   wovim
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar

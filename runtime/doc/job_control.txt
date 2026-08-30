@@ -1,4 +1,4 @@
-*job_control.txt*    Nvim
+*job_control.txt*    wovim
 
 
 		 NVIM REFERENCE MANUAL	  by Thiago de Arruda

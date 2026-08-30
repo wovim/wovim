@@ -1,4 +1,4 @@
-*ft_sql.txt*	Nvim
+*ft_sql.txt*	wovim
 
 by David Fishburn
 

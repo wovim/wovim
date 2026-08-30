@@ -1,4 +1,4 @@
-*if_pyth.txt*   Nvim
+*if_pyth.txt*   wovim
 
 
 		  NVIM REFERENCE MANUAL

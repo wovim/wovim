@@ -1,4 +1,4 @@
-*usr_11.txt*	Nvim
+*usr_11.txt*	wovim
 
 
 		     VIM USER MANUAL	by Bram Moolenaar

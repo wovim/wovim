@@ -1,4 +1,4 @@
-*map.txt*       Nvim
+*map.txt*       wovim
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar

@@ -1,4 +1,4 @@
-*faq.txt*		 Nvim
+*faq.txt*		 wovim
 
                             NVIM REFERENCE MANUAL
 

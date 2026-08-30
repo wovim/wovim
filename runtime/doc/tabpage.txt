@@ -1,4 +1,4 @@
-*tabpage.txt*   Nvim
+*tabpage.txt*   wovim
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar

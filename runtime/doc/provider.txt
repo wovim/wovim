@@ -1,4 +1,4 @@
-*provider.txt*		Nvim
+*provider.txt*		wovim
 
 
 		 NVIM REFERENCE MANUAL	  by Thiago de Arruda

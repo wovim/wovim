@@ -1,4 +1,4 @@
-*options.txt*	Nvim
+*options.txt*	wovim
 
 
 		  VIM REFERENCE MANUAL	  by Bram Moolenaar
