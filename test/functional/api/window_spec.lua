@@ -2028,6 +2028,9 @@ describe('API/win', function()
 
     it('restores last known cursor position if BufWinEnter did not move it', function()
       -- This test mostly exists to ensure BufWinEnter is executed before enter_buffer's epilogue.
+      -- nvim.lastplace (see |restore-cursor|) is unrelated to that and firing on the same event
+      -- would interfere, so it's disabled for this test.
+      command('autocmd! nvim.lastplace')
       local buf = api.nvim_get_current_buf()
       insert([[
         foo

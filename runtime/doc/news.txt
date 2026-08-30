@@ -260,6 +260,9 @@ DEFAULTS
 
 • 'rulerformat' default is exposed as a statusline expression (previously it
   was implemented as an internal C routine).
+• Reopening a file restores the cursor to the last-known position (the
+  |restore-cursor| autocmd, now a default -- |default-autocmds|
+  "nvim.lastplace").
 
 DIAGNOSTICS
 

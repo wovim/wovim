@@ -195,7 +195,11 @@ describe('ShaDa support code', function()
     nvim_command('2')
     nvim_command('mark a')
     expect_exit(nvim_command, 'qall')
-    reset({ args = { testfilename } })
+    -- The '"' mark also lands on line 2 here (that's where the cursor was
+    -- on exit), which would auto-restore the cursor via nvim.lastplace
+    -- before ]' ever runs -- irrelevant to what this test actually checks
+    -- (round-tripping mark `a` and the ]' motion), so it's disabled.
+    reset({ args = { '--cmd', 'autocmd! nvim.lastplace', testfilename } })
     eq(1, nvim_current_line())
     nvim_command("normal! ]'")
     eq(2, nvim_current_line())

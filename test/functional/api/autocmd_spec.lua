@@ -225,8 +225,9 @@ describe('autocmd api', function()
         command = "echo 'Should Not Have Errored'",
       })
 
-      -- We should have one autocmd for *.py and one for *.pyi
-      eq(2, #api.nvim_get_autocmds { event = 'BufReadPost' })
+      -- One autocmd for *.py, one for *.pyi, plus the default nvim.lastplace
+      -- BufReadPost handler (see |restore-cursor|).
+      eq(3, #api.nvim_get_autocmds { event = 'BufReadPost' })
     end)
 
     it('should handle multiple values as array', function()
@@ -235,8 +236,9 @@ describe('autocmd api', function()
         command = "echo 'Should Not Have Errored'",
       })
 
-      -- We should have one autocmd for *.py and one for *.pyi
-      eq(2, #api.nvim_get_autocmds { event = 'BufReadPost' })
+      -- One autocmd for *.py, one for *.pyi, plus the default nvim.lastplace
+      -- BufReadPost handler (see |restore-cursor|).
+      eq(3, #api.nvim_get_autocmds { event = 'BufReadPost' })
     end)
 
     describe('desc', function()
@@ -249,8 +251,12 @@ describe('autocmd api', function()
           desc = desc,
         })
 
-        eq(desc, api.nvim_get_autocmds { event = 'BufReadPost' }[1].desc)
-        eq(cmd, api.nvim_get_autocmds { event = 'BufReadPost' }[1].command)
+        -- The default nvim.lastplace BufReadPost handler (see
+        -- |restore-cursor|) is already registered, so the one just created
+        -- here is last, not first.
+        local aus = api.nvim_get_autocmds { event = 'BufReadPost' }
+        eq(desc, aus[#aus].desc)
+        eq(cmd, aus[#aus].command)
       end)
 
       it('can add description to one autocmd that uses a callback', function()
@@ -265,10 +271,10 @@ describe('autocmd api', function()
             desc = vim.g.desc,
           })
           local aus = vim.api.nvim_get_autocmds({ event = 'BufReadPost' })
-          local first = aus[1]
+          local last = aus[#aus]
           return {
-            desc = first.desc,
-            cbtype = type(first.callback)
+            desc = last.desc,
+            cbtype = type(last.callback)
           }
         ]])
 
@@ -284,7 +290,11 @@ describe('autocmd api', function()
           })
         ]])
 
-        eq(nil, api.nvim_get_autocmds({ event = 'BufReadPost' })[1].desc)
+        -- The default nvim.lastplace BufReadPost handler (see
+        -- |restore-cursor|) has its own desc, so the one just created here
+        -- is last, not first.
+        local aus = api.nvim_get_autocmds { event = 'BufReadPost' }
+        eq(nil, aus[#aus].desc)
       end)
 
       it('can add description to multiple autocmd', function()
@@ -294,10 +304,12 @@ describe('autocmd api', function()
           desc = 'Can show description',
         })
 
+        -- Plus the default nvim.lastplace BufReadPost handler (see
+        -- |restore-cursor|), registered first.
         local aus = api.nvim_get_autocmds { event = 'BufReadPost' }
-        eq(2, #aus)
-        eq('Can show description', aus[1].desc)
+        eq(3, #aus)
         eq('Can show description', aus[2].desc)
+        eq('Can show description', aus[3].desc)
       end)
     end)
 
@@ -1775,8 +1787,9 @@ describe('autocmd api', function()
       eq(false, pcall(api.nvim_get_autocmds, { group = 'TEMP_A' }))
 
       -- For some reason, augroup! doesn't clear the autocmds themselves, which is just wild
-      -- but we managed to keep this behavior.
-      eq(1, #api.nvim_get_autocmds { event = 'BufReadPost' })
+      -- but we managed to keep this behavior. Plus the default nvim.lastplace
+      -- BufReadPost handler (see |restore-cursor|).
+      eq(2, #api.nvim_get_autocmds { event = 'BufReadPost' })
     end)
 
     it('legacy: remove augroups that have no autocmds', function()
@@ -1786,7 +1799,8 @@ describe('autocmd api', function()
       command('augroup! TEMP_AB')
 
       eq(false, pcall(api.nvim_get_autocmds, { group = 'TEMP_AB' }))
-      eq(0, #api.nvim_get_autocmds { event = 'BufReadPost' })
+      -- Just the default nvim.lastplace BufReadPost handler.
+      eq(1, #api.nvim_get_autocmds { event = 'BufReadPost' })
     end)
 
     it('legacy: multiple remove and add augroup', function()
@@ -1797,23 +1811,24 @@ describe('autocmd api', function()
 
       command('augroup! TEMP_ABC')
 
-      -- Should still have one autocmd :'(
+      -- Should still have one autocmd :'( -- plus the default nvim.lastplace
+      -- BufReadPost handler (see |restore-cursor|).
       local aus = api.nvim_get_autocmds { event = 'BufReadPost' }
-      eq(1, #aus, aus)
+      eq(2, #aus, aus)
 
       command('augroup TEMP_ABC')
       command('    au!')
       command('    autocmd BufReadPost *.py echo "Hello"')
       command('augroup END')
 
-      -- Should now have two autocmds :'(
+      -- Should now have two autocmds :'(, plus the default one.
       aus = api.nvim_get_autocmds { event = 'BufReadPost' }
-      eq(2, #aus, aus)
+      eq(3, #aus, aus)
 
       command('augroup! TEMP_ABC')
 
       eq(false, pcall(api.nvim_get_autocmds, { group = 'TEMP_ABC' }))
-      eq(2, #api.nvim_get_autocmds { event = 'BufReadPost' })
+      eq(3, #api.nvim_get_autocmds { event = 'BufReadPost' })
     end)
 
     it('api: should clear and not return any autocmds for delete groups by id', function()
@@ -1825,9 +1840,10 @@ describe('autocmd api', function()
       api.nvim_del_augroup_by_id(augroup_id)
 
       -- For good reason, we kill all the autocmds from del_augroup,
-      -- so now this works as expected
+      -- so now this works as expected. Just the default nvim.lastplace
+      -- BufReadPost handler is left (see |restore-cursor|).
       eq(false, pcall(api.nvim_get_autocmds, { group = 'TEMP_ABCD' }))
-      eq(0, #api.nvim_get_autocmds { event = 'BufReadPost' })
+      eq(1, #api.nvim_get_autocmds { event = 'BufReadPost' })
     end)
 
     it('api: should clear and not return any autocmds for delete groups by name', function()
@@ -1838,9 +1854,10 @@ describe('autocmd api', function()
       api.nvim_del_augroup_by_name('TEMP_ABCDE')
 
       -- For good reason, we kill all the autocmds from del_augroup,
-      -- so now this works as expected
+      -- so now this works as expected. Just the default nvim.lastplace
+      -- BufReadPost handler is left (see |restore-cursor|).
       eq(false, pcall(api.nvim_get_autocmds, { group = 'TEMP_ABCDE' }))
-      eq(0, #api.nvim_get_autocmds { event = 'BufReadPost' })
+      eq(1, #api.nvim_get_autocmds { event = 'BufReadPost' })
     end)
   end)
 

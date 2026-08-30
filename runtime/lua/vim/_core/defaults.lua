@@ -770,6 +770,292 @@ do
     )
   end)
 
+  -- Jump to the last-known cursor position when reopening a file, per the
+  -- worked example at |restore-cursor|: skip an invalid mark, a commit or
+  -- rebase message (it's a new one, not last time's), xxd(1)-filtered binary
+  -- (see |using-xxd|), diff mode, or a cursor an earlier autocmd (a
+  -- ftplugin, a user's own BufReadPost/FileType handler) already moved off
+  -- line one. 'filetype' is already set by the time this runs -- it's
+  -- BufWinEnter, which fires strictly after every BufReadPost handler,
+  -- ftdetect's own BufReadPost autocmd (group "filetypedetect", what
+  -- actually fires FileType) included, regardless of registration order.
+  -- A later startup argument (+cmd,
+  -- -c, -t, -q, -S) that moves the cursor is unaffected too, but by
+  -- ordering, not by any check here: main.c runs all of those (exe_commands,
+  -- handle_tag, qf_jump) *after* every window's own BufWinEnter, so a jump
+  -- made here always executes first and is free to be overridden after.
+  --
+  -- BufWinEnter also fires for a plain switch to a buffer that's already
+  -- loaded -- CTRL-^, CTRL-O/CTRL-I, :bprevious/:bnext, a 'hidden' buffer
+  -- coming back into view -- none of which are "reopening a file" in the
+  -- sense |restore-cursor| means. Those already have their own, more
+  -- authoritative position/view restoration (native per-window cursor
+  -- memory, |'jumpoptions'| "view"), and competing with it is worse than
+  -- doing nothing: the cursor line can coincidentally end up right while
+  -- the scroll position doesn't, since a plain g`" jump doesn't know what
+  -- view was saved for a jumplist-style return. So this only fires right
+  -- after a genuine read -- BufReadPost sets a per-buffer flag, BufWinEnter
+  -- consumes and clears it, and a plain buffer-switch (no matching
+  -- BufReadPost just before it) leaves the flag unset and does nothing.
+  -- (:split on the same buffer never even fires BufWinEnter, so there's
+  -- nothing to skip there either.) The flag is also cleared shortly after
+  -- BufReadPost itself, in case that read has no BufWinEnter to consume it
+  -- at all -- :checktime / 'autoread' reloads a changed buffer by calling
+  -- readfile() directly (buf_reload() in fileio.c) in the buffer's own
+  -- existing window (confirmed by direct trace: BufReadPost fires there
+  -- with a real, non-synthetic window already current), not no window --
+  -- but BufWinEnter still doesn't follow, since the window was already
+  -- showing this buffer and nothing about *that* pairing changed. A flag
+  -- left set from the reload would mislead the next unrelated BufWinEnter
+  -- for the same buffer. (The clear is scheduled, not
+  -- immediate, so it still loses to a switch made in the exact same tick as
+  -- the reload -- not reachable through normal interactive use, since a
+  -- reload's own trigger, e.g. CursorHold, is never in the same tick as
+  -- whatever switches buffers next.)
+  --
+  -- Two of Nvim's own startup-sequencing quirks additionally race a
+  -- restore made straight from BufWinEnter, and both are worked around
+  -- rather than deferred -- deferring the decision to VimEnter was tried
+  -- and reverted: every startup argument above also runs *before* VimEnter,
+  -- so a VimEnter-time jump would just as happily override one of *those*,
+  -- exactly the failure this design avoids by running first instead.
+  --
+  -- - Opening the same file in two windows at once ("nvim -o f f") reuses
+  --   one buffer, and Nvim unloads+rereads it for the second window --
+  --   which writes the |'"| mark from that window's own (still line-1)
+  --   cursor, clobbering the mark before its BufWinEnter can read it. Worked
+  --   around by caching the mark on BufReadPost, before anything can
+  --   clobber it, and preferring that cache over the live mark -- but only
+  --   for a read that's actually part of *this* startup's own file argument
+  --   list, not merely "still starting up": Nvim's unload+reread writes the
+  --   buffer's own cursor into the mark as part of leaving it, and a later,
+  --   unrelated reread of the same buffer (a startup -c command that
+  --   explicitly rereads a file already named on the argument list, even in
+  --   a brand new window, say) does the exact same thing to the mark --
+  --   indistinguishable from the race by its mark, cursor, or window alone.
+  --   What *does* distinguish them: |argv()|, at the moment this file loads
+  --   (before a single window exists), already lists every file the
+  --   argument list is *going* to open, duplicates and all -- so each entry
+  --   can be claimed off, once, by the read it actually belongs to
+  --   (`nvim_lastplace_arg_pending` below), and only that read trusts the
+  --   cache. Nothing later can ever claim one, since the list itself never
+  --   grows.
+  --   A *third* (or later) occurrence of a name earlier in the list doesn't
+  --   always get its own fresh read at all -- e.g. "nvim -o g f f" never
+  --   fires BufReadPost for window 3. Every extra window opens onto
+  --   firstwin's own starting buffer (main.c), and do_ecmd() only rereads
+  --   when that starting buffer *is* the target -- true for "-o f f"
+  --   (firstwin already showed f) and true again for every window of
+  --   "-o f f f" (firstwin's own name is the one repeating), false once an
+  --   unrelated file comes first (confirmed by direct trace: "-o g f f"'s
+  --   window 3 and "-o g f g f"'s second "f" both get only a BufWinEnter,
+  --   no BufReadPost -- while that same run's second "g" gets a real reread,
+  --   since firstwin's own name is what it matches). BufWinEnter still
+  --   fires unconditionally either way, so BufWinEnter itself falls back to
+  --   the same claim-and-cache handling BufReadPost normally does, for any
+  --   window still unclaimed once startup gets there (see below).
+  -- - "nvim -d a b" only turns 'diff' on for every window *after* every
+  --   file is already open (see diff_win_options() in diff.c), so 'diff'
+  --   reads as off for every window but the first at its own BufWinEnter.
+  --   Worked around because 'diff' is a startup exception to that: it's
+  --   set on the *first* window immediately, before any window is even
+  --   created (main.c: "so that it can be checked for in a vimrc file") --
+  --   so checking the first window's 'diff', not just the current one,
+  --   catches "-d was requested" even before the current window's own bit
+  --   is flipped.
+  local nvim_lastplace_augroup = vim.api.nvim_create_augroup('nvim.lastplace')
+  local nvim_lastplace_marks = {} --- @type table<integer, [integer, integer]>
+  local nvim_lastplace_fresh_read = {} --- @type table<integer, true>
+  local nvim_lastplace_arg_read = {} --- @type table<integer, true>
+
+  --- How many more times each file the argument list names is expected to
+  --- be read fresh as part of *this* startup's own window creation --
+  --- keyed by resolved path since that's all argv() gives before any buffer
+  --- (and so any buffer number) exists yet. A duplicate entry (e.g. "nvim -o
+  --- f f") claims two; everything else claims one; a file named zero times
+  --- (opened only via -c/+cmd) never claims any -- see the block comment
+  --- above.
+  ---
+  --- Capped at 1 per path unless -o/-O/-p (with an optional window-count
+  --- digit, e.g. "-O3") was actually given: without one of those,
+  --- create_windows() never opens more than a single window (window_count
+  --- stays 1 regardless of how many times a name repeats in the argument
+  --- list -- e.g. "nvim f f" just opens the first "f" once, leaving "f f"
+  --- navigable via |:next| in that one window, not two), so at most one
+  --- read of any given path could ever be part of *this* startup's own
+  --- window creation. Leaving the cap off let a plain "nvim f f" permanently
+  --- leave one claim unclaimed, which a later, unrelated startup switch to
+  --- that same buffer (e.g. a -c command, still before VimEnter) could then
+  --- wrongly consume via the BufWinEnter fallback below, applying a stashed
+  --- mark that's likely stale by then to a window that should never have
+  --- been touched at all -- confirmed by direct trace.
+  local nvim_lastplace_multi_window = false
+  for _, arg in ipairs(vim.v.argv) do
+    if arg:match('^%-[oOp]%d*$') then
+      nvim_lastplace_multi_window = true
+      break
+    end
+  end
+  local nvim_lastplace_arg_pending = {} --- @type table<string, integer>
+  for _, arg in ipairs(vim.fn.argv() --[[@as string[] ]]) do
+    local path = vim.fn.fnamemodify(arg, ':p')
+    local pending = (nvim_lastplace_arg_pending[path] or 0) + 1
+    if nvim_lastplace_multi_window or pending <= 1 then
+      nvim_lastplace_arg_pending[path] = pending
+    end
+  end
+
+  --- Whether "nvim -d ..." was requested, even before the *current* window's
+  --- own 'diff' has been turned on yet (see the block comment above). Only a
+  --- valid proxy during startup itself: post-startup, the first window in a
+  --- tab being in diff mode says nothing about a later, unrelated window
+  --- added to that same tab (a plain :split while an earlier :diffthis
+  --- session is still open, say), so this is only ever consulted then.
+  local function nvim_lastplace_diff_startup_pending()
+    local first_win = vim.api.nvim_tabpage_list_wins(0)[1]
+    return vim.api.nvim_win_is_valid(first_win) and vim.wo[first_win].diff
+  end
+
+  --- Restore the current window's cursor to `buf`'s last-known position, if
+  --- there's a real one worth jumping to. `buf` is a parameter (rather than
+  --- read off the current window) for symmetry with the rest of this file's
+  --- nvim_on() callbacks. `is_arg_read` is true only for the read that just
+  --- claimed an entry off `nvim_lastplace_arg_pending` (see the block
+  --- comment above and BufReadPost below) -- i.e. only ever during startup,
+  --- and only for a read Nvim's own unload/reread race could actually have
+  --- clobbered.
+  local function nvim_lastplace_restore(buf, is_arg_read)
+    if
+      vim.bo[buf].buftype ~= ''
+      or vim.wo[0].diff
+      or (is_arg_read and nvim_lastplace_diff_startup_pending())
+      or vim.fn.line('.') > 1
+    then
+      return
+    end
+    local ft = vim.bo[buf].filetype
+    if ft == 'gitrebase' or ft == 'xxd' or ft:find('commit', 1, true) then
+      return
+    end
+    local mark = vim.api.nvim_buf_get_mark(buf, '"')
+    if is_arg_read and nvim_lastplace_marks[buf] then
+      mark = nvim_lastplace_marks[buf]
+    end
+    local lnum = mark[1]
+    if lnum <= 0 or lnum > vim.api.nvim_buf_line_count(buf) then
+      return
+    end
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    if lnum == cursor[1] and mark[2] == cursor[2] then
+      -- Nothing to restore -- e.g. a buffer that was never explicitly
+      -- closed defaults its '"' mark to (1, 0) (see clrallmarks() in
+      -- mark.c), the same place a fresh window's cursor already sits.
+      -- Just an optimization: skip a no-op jump, nothing more.
+      return
+    end
+    -- g`" reads the live '"' mark, not `mark` above -- write the cached
+    -- value back first in case Nvim's own startup sequencing (see above)
+    -- clobbered it. A genuine no-op outside of that startup race.
+    vim.api.nvim_buf_set_mark(buf, '"', lnum, mark[2], {})
+    vim.cmd('normal! g`"')
+    vim.cmd('normal! zv') -- open a fold left closed around the target line
+  end
+
+  nvim_on('BufReadPost', nvim_lastplace_augroup, {
+    desc = 'Track a genuine file read for |restore-cursor|.',
+  }, function(ev)
+    nvim_lastplace_fresh_read[ev.buf] = true
+    if vim.v.vim_did_enter == 1 then
+      -- A same-command BufWinEnter (the common case) already consumes and
+      -- clears this flag itself, synchronously, before a scheduled callback
+      -- can run -- so this is a no-op then. It only matters for a read with
+      -- no BufWinEnter to follow it at all; see the block comment above.
+      -- Skipped during startup itself: BufWinEnter's own restore call below
+      -- already reads this flag synchronously, before startup can proceed
+      -- any further, so nothing here would ever run ahead of it anyway.
+      vim.schedule(function()
+        nvim_lastplace_fresh_read[ev.buf] = nil
+      end)
+    end
+    -- Claim this read against the argument list, if it's on it; see the
+    -- block comment above. A buffer can be read fresh more than once with
+    -- the same name still pending (the "-o f f" race this exists for) --
+    -- always the same buffer number both times, so nvim_lastplace_arg_read
+    -- is keyed by that, even though the claim itself is by path.
+    local path = vim.api.nvim_buf_get_name(ev.buf)
+    local pending = nvim_lastplace_arg_pending[path]
+    if pending and pending > 0 then
+      nvim_lastplace_arg_pending[path] = pending - 1
+      nvim_lastplace_arg_read[ev.buf] = true
+      -- Startup-only cache; see the block comment above. Only ever written
+      -- for a read that just claimed an argument-list entry, so it can
+      -- never grow past the length of the argument list, and never again
+      -- once every entry is claimed.
+      if nvim_lastplace_marks[ev.buf] == nil then
+        nvim_lastplace_marks[ev.buf] = vim.api.nvim_buf_get_mark(ev.buf, '"')
+      end
+    else
+      nvim_lastplace_arg_read[ev.buf] = nil
+    end
+  end)
+
+  nvim_on({ 'BufDelete', 'BufWipeout' }, nvim_lastplace_augroup, {
+    desc = 'Forget a deleted buffer for |restore-cursor|.',
+  }, function(ev)
+    nvim_lastplace_marks[ev.buf] = nil
+    nvim_lastplace_fresh_read[ev.buf] = nil
+    nvim_lastplace_arg_read[ev.buf] = nil
+  end)
+
+  -- nvim_lastplace_restore itself skips anything but a real file buffer
+  -- (buftype ""), so this never actually restores for the quickfix list, a
+  -- terminal, or a scratch buffer -- even though it's not filtered by
+  -- pattern here.
+  nvim_on('BufWinEnter', nvim_lastplace_augroup, {
+    desc = 'Restore cursor to the last-known position. See |restore-cursor|.',
+  }, function(ev)
+    if nvim_lastplace_fresh_read[ev.buf] then
+      nvim_lastplace_fresh_read[ev.buf] = nil
+      local is_arg_read = nvim_lastplace_arg_read[ev.buf]
+      nvim_lastplace_arg_read[ev.buf] = nil
+      nvim_lastplace_restore(ev.buf, is_arg_read)
+      return
+    end
+    -- No BufReadPost preceded this window's own BufWinEnter -- e.g. a
+    -- repeated startup argument whose window just got pointed at a buffer
+    -- another window already loaded, with no read of its own to claim (see
+    -- the block comment above). BufWinEnter still fires unconditionally
+    -- for it, so fall back to the same claim-and-cache handling BufReadPost
+    -- does, keyed off the same argument-list pending count. Safe even for a
+    -- switch that happens well before VimEnter (a -c command, say, not just
+    -- edit_buffers()'s own window creation): nvim_lastplace_arg_pending
+    -- itself is only ever seeded above 1 per path when -o/-O/-p was
+    -- actually given, so a *plain* "nvim f f" (no window flag, one real
+    -- window) never leaves a phantom claim behind for something later and
+    -- unrelated to consume.
+    if vim.v.vim_did_enter == 1 or nvim_lastplace_marks[ev.buf] == nil then
+      return
+    end
+    local path = vim.api.nvim_buf_get_name(ev.buf)
+    local pending = nvim_lastplace_arg_pending[path]
+    if pending and pending > 0 then
+      nvim_lastplace_arg_pending[path] = pending - 1
+      nvim_lastplace_restore(ev.buf, true)
+    end
+  end)
+
+  -- Startup-only cache and claim table; done with both once every window
+  -- that's going to exist at startup has had its own BufWinEnter -- the
+  -- argument list this is keyed against never grows, so nothing is ever
+  -- consulted again either way, but there's no reason to keep holding them.
+  nvim_on('VimEnter', nvim_lastplace_augroup, {
+    desc = 'Drop the startup-only cache and claim table. See |restore-cursor|.',
+    once = true,
+  }, function()
+    nvim_lastplace_marks = {}
+    nvim_lastplace_arg_pending = {}
+  end)
+
   -- Check if a TTY is attached
   local tty = nil
   for _, ui in ipairs(vim.api.nvim_list_uis()) do

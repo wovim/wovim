@@ -141,6 +141,11 @@ if so.  It doesn't do that when:
    |using-xxd|) and
  - Vim is in diff mode
 
+Note: this fork applies this behavior automatically by default (see
+|default-autocmds| "nvim.lastplace"), so there is no need to add it
+yourself.  It is kept here because it remains a useful worked example of
+autocommand concepts, and because |restore-cursor| still points here.
+
 The backslash at the start of a line is used to continue the command from the
 previous line.  That avoids a line getting very long.  See |line-continuation|.
 This only works in a Vim script file, not when typing commands at the

@@ -47,6 +47,10 @@ describe(':autocmd', function()
     screen:add_extra_attr_ids {
       [100] = { foreground = Screen.colors.Magenta, bold = true },
     }
+    -- Unrelated to this test (:autocmd pagination); nvim.lastplace's own
+    -- groups sort before "test_1" and would otherwise push the pagination
+    -- cutoff to a different point in the listing.
+    command('autocmd! nvim.lastplace')
     exec([[
       set more
       autocmd! BufEnter

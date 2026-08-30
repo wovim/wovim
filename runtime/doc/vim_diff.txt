@@ -217,6 +217,26 @@ nvim.swapfile:
   swapfile is owned by a running Nvim process. Shows |W325| "Ignoring
   swapfile…" message.
 
+nvim.lastplace:
+- |BufReadPost|: Tracks a genuine file read, for the |BufWinEnter| entry
+  below.
+- |BufWinEnter|: If the window just read the file fresh from disk (per the
+  BufReadPost tracking above) and nothing already moved the cursor off line
+  one, restores it to the last-known position and opens a fold left closed
+  around it (|zv|) -- the same |restore-cursor| worked example from the user
+  manual, already applied automatically; it does not need to be added by
+  hand. Never for a plain switch to an
+  already-loaded buffer (|CTRL-^|, |CTRL-O|/|CTRL-I|, ":bprevious"/
+  ":bnext", a |'hidden'| buffer coming back into view) -- those already have
+  Nvim's own, more authoritative position/view restoration. Applies only to
+  normal file buffers (not the quickfix list, a terminal, or a scratch
+  buffer). Skipped for a commit/rebase message, xxd(1)-filtered binary, or
+  diff mode (including "nvim -d").
+- |BufDelete| |BufWipeout|: Forgets a deleted buffer's tracked state.
+- |VimEnter|: Drops a startup-only cache used to survive Nvim's own
+  buffer-reread race for a repeated startup file argument (e.g.
+  "nvim -o file file").
+
 nvim.exrc:
 - |VimEnter|: Extend 'exrc' to also search for project-local configuration files
   in all parent directories.
