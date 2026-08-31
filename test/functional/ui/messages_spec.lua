@@ -353,6 +353,21 @@ describe('ui/ext_messages', function()
           history = true,
           kind = 'verbose',
         },
+        -- nvim.lastplace (registered before this test's own augroup, so it
+        -- runs first); the line number is where its BufWinEnter callback is
+        -- defined in defaults.lua, since :verbose autocommand tracing names
+        -- an undescribed Lua callback by source location, not by its `desc`.
+        {
+          content = { { 'autocommand <Lua 82: vim/_core/defaults:1016>' } },
+          history = true,
+          kind = 'verbose',
+        },
+        { content = { { '\n' } }, kind = '' },
+        {
+          content = { { 'Executing BufWinEnter Autocommands for "*"' } },
+          history = true,
+          kind = 'verbose',
+        },
         { content = { { 'autocommand bdelete' } }, history = true, kind = 'verbose' },
         { content = { { '\n' } }, kind = '' },
       },
@@ -396,7 +411,7 @@ describe('ui/ext_messages', function()
     feed(':help<CR>:tselect<CR>')
     screen:expect({
       grid = [[
-        ^*help.txt*      Nvim     |
+        ^*help.txt*      wovim    |
                                  |
         {3:help.txt [Help][-][RO]   }|
         line                     |
@@ -2219,9 +2234,9 @@ describe('ui/builtin messages', function()
     feed(':intro<CR>')
     screen:expect([[
                                                                                       |*3
-                                           {16:│} {26:╲} {26:││}                                     |
-                                           {16:││}{26:╲╲││}                                     |
-                                           {16:││} {26:╲} {26:│}                                     |
+                                        {26:╲}    {26:╱╲}    {26:╱}                                  |
+                                         {26:╲}  {26:╱}  {26:╲}  {26:╱}                                   |
+                                          {26:╲╱}    {26:╲╱}                                    |
                                                                                       |
       {MATCH:.*}|
                         {1:────────────────────────────────────────────}                  |
@@ -2247,7 +2262,7 @@ describe('ui/builtin messages', function()
   it(':intro with small screen #38396', function()
     screen:try_resize(80, 6)
     feed(':intro<CR>')
-    screen:expect({ any = 'NVIM' })
+    screen:expect({ any = 'wovim' })
     feed('<CR>')
     assert_alive()
   end)
@@ -2289,11 +2304,11 @@ describe('ui/ext_messages', function()
     local introscreen = [[
       ^                                                                                |
       {1:~                                                                               }|*2
-      {1:~                                    }{16:│} {26:╲} {26:││}{1:                                     }|
-      {1:~                                    }{16:││}{26:╲╲││}{1:                                     }|
-      {1:~                                    }{16:││} {26:╲} {26:│}{1:                                     }|
+      {1:~                                 }{26:╲}    {26:╱╲}    {26:╱}{1:                                  }|
+      {1:~                                 } {26:╲}  {26:╱}  {26:╲}  {26:╱} {1:                                  }|
+      {1:~                                 }  {26:╲╱}    {26:╲╱}  {1:                                  }|
       {1:~                                                                               }|
-      {1:~{MATCH: +}}{26:NVIM {MATCH:.+}}{1:{MATCH: +}}|
+      {1:~{MATCH: +}}{26:wovim {MATCH:.+}}{1:{MATCH: +}}|
       {1:~                 ────────────────────────────────────────────                  }|
       {1:~                 }Nvim is open source and freely distributable{1:                  }|
       {1:~                               }https://wovim.io{1:                                }|
@@ -2329,11 +2344,11 @@ describe('ui/ext_messages', function()
         ^                                                                                |
         {1:~    }{4:     }{1:                                                                      }|
         {1:~                                                                               }|
-        {1:~                                    }{16:│} {26:╲} {26:││}{1:                                     }|
-        {1:~                                    }{16:││}{26:╲╲││}{1:                                     }|
-        {1:~                                    }{16:││} {26:╲} {26:│}{1:                                     }|
+        {1:~                                 }{26:╲}    {26:╱╲}    {26:╱}{1:                                  }|
+        {1:~                                 } {26:╲}  {26:╱}  {26:╲}  {26:╱} {1:                                  }|
+        {1:~                                 }  {26:╲╱}    {26:╲╱}  {1:                                  }|
         {1:~                                                                               }|
-        {1:~{MATCH: +}}{26:NVIM {MATCH:.+}}{1:{MATCH: +}}|
+        {1:~{MATCH: +}}{26:wovim {MATCH:.+}}{1:{MATCH: +}}|
         {1:~                 ────────────────────────────────────────────                  }|
         {1:~                 }Nvim is open source and freely distributable{1:                  }|
         {1:~                               }https://wovim.io{1:                                }|
@@ -2370,11 +2385,11 @@ describe('ui/ext_messages', function()
       grid = [[
         ^                                                                                |
                                                                                         |*2
-                                             {16:│} {26:╲} {26:││}                                     |
-                                             {16:││}{26:╲╲││}                                     |
-                                             {16:││} {26:╲} {26:│}                                     |
+                                          {26:╲}    {26:╱╲}    {26:╱}                                  |
+                                           {26:╲}  {26:╱}  {26:╲}  {26:╱}                                   |
+                                            {26:╲╱}    {26:╲╱}                                    |
                                                                                         |
-        {MATCH: +}{26:NVIM {MATCH:.+}}{MATCH: +}|
+        {MATCH: +}{26:wovim {MATCH:.+}}{MATCH: +}|
                           {1:────────────────────────────────────────────}                  |
                           Nvim is open source and freely distributable                  |
                                         https://wovim.io                                |
@@ -2504,11 +2519,11 @@ it('ui/ext_multigrid supports intro screen', function()
     ## grid 2
       ^                                                                                |
       {1:~                                                                               }|*2
-      {1:~                                    }{16:│} {26:╲} {26:││}{1:                                     }|
-      {1:~                                    }{16:││}{26:╲╲││}{1:                                     }|
-      {1:~                                    }{16:││} {26:╲} {26:│}{1:                                     }|
+      {1:~                                 }{26:╲}    {26:╱╲}    {26:╱}{1:                                  }|
+      {1:~                                 } {26:╲}  {26:╱}  {26:╲}  {26:╱} {1:                                  }|
+      {1:~                                 }  {26:╲╱}    {26:╲╱}  {1:                                  }|
       {1:~                                                                               }|
-      {1:~{MATCH: +}}{26:NVIM {MATCH:.+}}{1:{MATCH: +}}|
+      {1:~{MATCH: +}}{26:wovim {MATCH:.+}}{1:{MATCH: +}}|
       {1:~                 ────────────────────────────────────────────                  }|
       {1:~                 }Nvim is open source and freely distributable{1:                  }|
       {1:~                               }https://wovim.io{1:                                }|

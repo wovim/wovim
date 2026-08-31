@@ -1142,7 +1142,7 @@ describe('completion', function()
     feed('oX<C-X><C-N>')
     screen:expect {
       grid = [[
-      *credits.txt*          Nvim                                 |
+      *credits.txt*          wovim                                |
       Xvi^                                                         |
       {12:Xvi            }{101: }                                            |
       {4:Xvim           }{101: }                                            |
