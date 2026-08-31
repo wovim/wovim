@@ -3328,6 +3328,11 @@ describe('LSP', function()
     it('connects to lsp server via rpc.connect using hostname', function()
       skip(is_os('bsd'), 'issue with host resolution in ci')
       skip(t.is_arch('s390x'), 'issue with host resolution in ci')
+      local resolves_ipv6 = false
+      for _, addr in ipairs(vim.uv.getaddrinfo('localhost', nil) or {}) do
+        resolves_ipv6 = resolves_ipv6 or addr.family == 'inet6'
+      end
+      skip(not resolves_ipv6, "localhost doesn't resolve to an IPv6 address on this system")
       exec_lua(create_tcp_echo_server)
       exec_lua(function()
         local port = _G._create_tcp_server('::1')
